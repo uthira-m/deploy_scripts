@@ -5499,8 +5499,10 @@ export default function PersonnelDetailsPage() {
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-medium text-sm lg:text-base">
                                   {index + 1}
                                 </td>
-                                <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
-                                  {familyProblem.problem}
+                                <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base max-w-[200px]">
+                                  <div className="break-words line-clamp-3" title={familyProblem.problem || undefined}>
+                                    {familyProblem.problem || "-"}
+                                  </div>
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base max-w-[200px]">
                                   <div className="break-words line-clamp-3" title={familyProblem.remarks || undefined}>

@@ -1352,10 +1352,10 @@ export default function MyProfilePage() {
                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center">
                               <span className="text-pink-400 font-semibold text-sm">{index + 1}</span>
                             </div>
-                            <div className="flex-1">
-                              <h4 className="text-white font-medium mb-2">{problem.problem}</h4>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-white font-medium mb-2 break-words line-clamp-3" title={problem.problem || undefined}>{problem.problem}</h4>
                               {problem.remarks && (
-                                <p className="text-gray-400 text-sm">{problem.remarks}</p>
+                                <p className="text-gray-400 text-sm break-words line-clamp-3" title={problem.remarks}>{problem.remarks}</p>
                               )}
                             </div>
                           </div>
