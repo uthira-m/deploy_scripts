@@ -424,7 +424,7 @@
   position: relative;
   font-family: "Segoe UI", system-ui, sans-serif;
   background: url("../../assets/login_bg6.png");
-  /* background-size: cover; */
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   padding: 1rem;

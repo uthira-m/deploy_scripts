@@ -193,7 +193,7 @@ export default function LoginPage() {
             : "opacity-0 translate-y-8"
         }`}
       >
-        <div className="login-wrapper w-full max-w-[480px] mx-auto">
+        <div className=" w-full max-w-[480px] mx-auto">
           <div className="bg-overlay" />
 
           <div className="login-content">
