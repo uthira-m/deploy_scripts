@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { personnelService } from "@/lib/api";
+import { config } from "@/config/env";
 
 interface OutStationLike {
   start_date?: string;
@@ -68,7 +69,7 @@ export const useOutStationStatus = (records: { id: number }[]) => {
         const results = await Promise.all(
           missingIds.map(async (id) => {
             try {
-              const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5003/api'}/others/${id}/out-station-employment`, {
+              const response = await fetch(`${config.API_BASE_URL}/others/${id}/out-station-employment`, {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`,
                   'Content-Type': 'application/json',

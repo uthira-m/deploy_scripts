@@ -126,9 +126,9 @@ class ApiService {
 
       const data = tryDecryptResponse<ApiResponse<T>>(raw, response.headers);
 
-      // For 200 status codes, return the data regardless of status field (success/failure)
+      // For 2xx success status codes, return the data regardless of status field (success/failure)
       // This allows the frontend to handle success/failure based on the status field
-      if (response.status === 200) {
+      if (response.ok && response.status >= 200 && response.status < 300) {
         return data;
       }
 
@@ -744,6 +744,15 @@ class LeaveService {
     const formData = new FormData();
     formData.append('file', file);
     return this.api.post('/leave/bulk-upload', formData);
+  }
+
+  // Create leave extension
+  async createLeaveExtension(data: {
+    leave_request_id: number;
+    new_end_date: string;
+    extension_reason: string;
+  }) {
+    return this.api.post('/leave-extensions', data);
   }
 
   // Download template for bulk upload

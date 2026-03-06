@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
 import { api } from "@/lib/api";
 import { paginationConfig } from "@/config/pagination";
+import { config } from "@/config/env";
 import { Upload, FileText, Calendar, User, Eye, Download, Trash2, X, Plus } from "lucide-react";
 
 interface Document {
@@ -508,7 +509,7 @@ export default function DocsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL}${selectedDocument.file_path}`, '_blank')}
+                    onClick={() => window.open(`${config.BACKEND_URL}${selectedDocument.file_path}`, '_blank')}
                     className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
                     <Download className="w-4 h-4" />
@@ -525,7 +526,7 @@ export default function DocsPage() {
 
               <div className="flex-1 p-4">
                 <iframe
-                  src={`${process.env.NEXT_PUBLIC_API_URL}${selectedDocument.file_path}`}
+                  src={`${config.BACKEND_URL}${selectedDocument.file_path}`}
                   className="w-full h-full border-0 rounded-lg"
                   title={selectedDocument.original_name}
                 />

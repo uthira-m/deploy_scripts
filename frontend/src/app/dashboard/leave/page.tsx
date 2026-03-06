@@ -264,7 +264,7 @@ export default function LeaveManagementPage() {
     
     const balance: LeaveBalance[] = types.map(type => {
       const approvedRequests = requests.filter(
-        req => (req.leave_type || req.leaveType || req.LeaveType)?.id === type.id && req.status === 'approved'
+        req => (req.leave_type || req.leaveType || req.LeaveType)?.id === type.id && (req.status?.toLowerCase() === 'approved' || req.status?.toLowerCase() === 'extended')
       );
       
       const usedDays = approvedRequests.reduce((total, req) => {
@@ -376,10 +376,36 @@ export default function LeaveManagementPage() {
     }
   };
 
+  // Normalize date to YYYY-MM-DD for API/input (handles ISO strings like "2025-03-15T00:00:00.000Z")
+  const toDateString = (dateVal: string | Date): string => {
+    if (!dateVal) return '';
+    if (typeof dateVal === 'string') {
+      const match = dateVal.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) return match[0];
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '';
+    }
+    const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  // Get the day after a date (for min date - backend requires new end date AFTER original)
+  const dayAfter = (dateVal: string | Date): string => {
+    const str = toDateString(dateVal);
+    if (!str) return '';
+    const [y, m, day] = str.split('-').map(Number);
+    const next = new Date(y, m - 1, day + 1);
+    return toDateString(next);
+  };
+
   const handleExtendLeave = (leaveRequest: any) => {
     setSelectedLeaveForExtension(leaveRequest);
+    const endDate = leaveRequest.end_date;
     setExtensionData({
-      new_end_date: leaveRequest.end_date,
+      new_end_date: dayAfter(endDate),
       extension_reason: ''
     });
     setShowExtendModal(true);
@@ -451,39 +477,33 @@ export default function LeaveManagementPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5003/api/leave-extensions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          leave_request_id: selectedLeaveForExtension.id,
-          new_end_date: extensionData.new_end_date,
-          extension_reason: extensionData.extension_reason
-        })
+      // Ensure date is in YYYY-MM-DD format for backend (handles ISO strings from date input)
+      const newEndDateStr = toDateString(extensionData.new_end_date);
+      const response = await leaveService.createLeaveExtension({
+        leave_request_id: selectedLeaveForExtension.id,
+        new_end_date: newEndDateStr,
+        extension_reason: extensionData.extension_reason
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response?.success) {
         showSuccess('Leave extended successfully!');
         setShowExtendModal(false);
         setSelectedLeaveForExtension(null);
         setExtensionData({ new_end_date: '', extension_reason: '' });
         loadData();
       } else {
-        showError(data.message || 'Failed to extend leave');
+        showError((response as any)?.message || 'Failed to extend leave');
       }
     } catch (error: any) {
       console.error('Error extending leave:', error);
-      showError('Failed to extend leave');
+      showError(error?.message || 'Failed to extend leave');
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      case 'extended': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
       case 'rejected': return 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
       case 'pending': return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
@@ -959,7 +979,7 @@ export default function LeaveManagementPage() {
                                 Reject
                               </button>
                             </div>
-                          ) : request.status === 'Approved' || request.status === 'approved' ? (
+                          ) : (request.status === 'Approved' || request.status === 'approved' || request.status === 'Extended' || request.status === 'extended') ? (
                             <div className="flex gap-2">
                               {/* <span className="text-xs text-emerald-400 font-medium">Approved</span> */}
                               <button
@@ -1228,9 +1248,9 @@ export default function LeaveManagementPage() {
                                 Reject
                                 </button>
                               </div>
-                            ) : request.status === 'Approved' ? (
+                            ) : (request.status === 'Approved' || request.status === 'Extended') ? (
                               <div className="flex gap-2">
-                                <span className="text-xs text-emerald-400 font-medium">Approved</span>
+                                <span className="text-xs text-emerald-400 font-medium">{request.status === 'Extended' ? 'Extended' : 'Approved'}</span>
                                 {(user?.role === 'commander' || user?.role === 'admin') && (
                                   <button
                                     onClick={() => handleExtendLeave(request)}
@@ -1345,7 +1365,7 @@ export default function LeaveManagementPage() {
                             {formatDate(request.created_at)}
                           </td>
                           <td className="px-4 lg:px-6 py-3 lg:py-4 whitespace-nowrap">
-                            {(request.status === 'Approved' || request.status === 'approved') ? (
+                            {(request.status === 'Approved' || request.status === 'approved' || request.status === 'Extended' || request.status === 'extended') ? (
                               <button
                                 onClick={() => handleExtendLeave(request)}
                                 className="px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded text-xs font-medium hover:bg-blue-500/30 transition-colors"
@@ -1586,7 +1606,7 @@ export default function LeaveManagementPage() {
                     type="date"
                     value={extensionData.new_end_date}
                     onChange={(e) => setExtensionData({ ...extensionData, new_end_date: e.target.value })}
-                    min={selectedLeaveForExtension.end_date}
+                    min={dayAfter(selectedLeaveForExtension.end_date)}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                     required
                   />
