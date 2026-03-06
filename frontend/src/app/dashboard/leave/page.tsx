@@ -6,7 +6,6 @@ import { leaveService } from '@/lib/api';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase } from 'lucide-react';
 import { paginationConfig } from '@/config/pagination';
-import { config } from "@/config/env";
 
 interface LeaveType {
   id: number;
@@ -477,33 +476,23 @@ export default function LeaveManagementPage() {
       return;
     }
 
-     try {
-      const response = await fetch(`${config.API_BASE_URL}/leave-extensions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          leave_request_id: selectedLeaveForExtension.id,
-          new_end_date: extensionData.new_end_date,
-          extension_reason: extensionData.extension_reason
-        })
+    try {
+      const response = await leaveService.createLeaveExtension({
+        leave_request_id: selectedLeaveForExtension.id,
+        new_end_date: extensionData.new_end_date,
+        extension_reason: extensionData.extension_reason
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         showSuccess('Leave extended successfully!');
         setShowExtendModal(false);
         setSelectedLeaveForExtension(null);
         setExtensionData({ new_end_date: '', extension_reason: '' });
         loadData();
       } else {
-        showError(data.message || 'Failed to extend leave');
         showError(response.message || 'Failed to extend leave');
       }
-    }catch (error: any) {
+    } catch (error: any) {
       console.error('Error extending leave:', error);
       showError(error?.message || 'Failed to extend leave');
     }
