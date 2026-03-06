@@ -1,0 +1,419 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Brockmann', Arial, sans-serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Brockmann', Arial, Helvetica, sans-serif;
+  ::-webkit-scrollbar {
+    display: none;
+}
+}
+
+/* Global table header font styling */
+th {
+  font-family: 'Brockmann', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 1rem; /* 16px - slightly larger for headers */
+}
+
+/* Global table data font styling */
+td {
+  font-family: 'Brockmann', Arial, sans-serif;
+  font-weight: 400;
+  font-size: 0.875rem; /* 14px - standard size for data */
+}
+
+/* Custom select styling for dark theme */
+select {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+select option {
+  background-color: #1f2937 !important;
+  color: white !important;
+  padding: 8px 12px;
+}
+
+select:focus {
+  outline: none !important;
+  ring: 2px solid #3b82f6 !important;
+  border-color: transparent !important;
+}
+
+/* Ensure select text is visible */
+select:invalid {
+  color: #9ca3af !important;
+}
+button{
+  cursor: pointer;
+}
+/* Profile field styles */
+.profile-field-label {
+  @apply text-white  font-medium;
+}
+
+.profile-field-value {
+ 
+   @apply text-gray-400 text-sm;
+}
+
+/* Toast notification animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.3s ease-in;
+}
+
+/* Marquee animations */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-text {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+.animate-marquee-text {
+  animation: marquee-text 60s linear infinite;
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+.animate-marquee-text:hover {
+  animation-play-state: paused;
+}
+
+/* Army Gun Shoot Animation */
+.gun-shoot-animation {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gun-shoot-animation.gun-right {
+  transform: scaleX(-1);
+}
+
+.gun-container {
+  position: relative;
+  z-index: 10;
+  animation: gunRecoil 2s ease-in-out infinite;
+}
+
+.gun-barrel {
+  width: 60px;
+  height: 8px;
+  background: linear-gradient(to right, #4a5568, #2d3748);
+  border-radius: 4px;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gun-body {
+  width: 40px;
+  height: 20px;
+  background: linear-gradient(to bottom, #718096, #4a5568);
+  border-radius: 4px;
+  position: absolute;
+  top: -6px;
+  left: -20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.gun-trigger {
+  width: 6px;
+  height: 12px;
+  background: #2d3748;
+  border-radius: 3px;
+  position: absolute;
+  bottom: -8px;
+  left: 5px;
+}
+
+.muzzle-flash {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, #ffd700 0%, #ff8c00 50%, transparent 70%);
+  border-radius: 50%;
+  left: 65px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: muzzleFlash 2s ease-in-out infinite;
+  z-index: 5;
+}
+
+.bullet {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffd700;
+  border-radius: 50%;
+  left: 75px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: bulletFly 2s ease-in-out infinite;
+  box-shadow: 0 0 8px #ffd700;
+}
+
+.sparkle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #ffd700;
+  border-radius: 50%;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: sparkleAnimation 2s ease-in-out infinite;
+  box-shadow: 0 0 6px #ffd700, 0 0 12px #ff8c00;
+}
+
+@keyframes gunRecoil {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  5% {
+    transform: translateX(-3px) rotate(-2deg);
+  }
+  10% {
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@keyframes muzzleFlash {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+  5% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
+  10% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.5);
+  }
+}
+
+@keyframes bulletFly {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+  5% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(20px) scale(1);
+  }
+  10% {
+    opacity: 0.8;
+    transform: translateY(-50%) translateX(40px) scale(0.8);
+  }
+  15% {
+    opacity: 0.5;
+    transform: translateY(-50%) translateX(60px) scale(0.6);
+  }
+  20% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(80px) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(80px) scale(0.4);
+  }
+}
+
+@keyframes sparkleAnimation {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(0) translateY(0) scale(0);
+  }
+  5% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(var(--sparkle-x, 20px)) translateY(var(--sparkle-y, 0)) scale(1);
+  }
+  10% {
+    opacity: 0.8;
+    transform: translateY(-50%) translateX(var(--sparkle-x2, 40px)) translateY(var(--sparkle-y2, 0)) scale(0.8);
+  }
+  15% {
+    opacity: 0.5;
+    transform: translateY(-50%) translateX(var(--sparkle-x3, 60px)) translateY(var(--sparkle-y3, 0)) scale(0.6);
+  }
+  20% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(var(--sparkle-x4, 80px)) translateY(var(--sparkle-y4, 0)) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(var(--sparkle-x4, 80px)) translateY(var(--sparkle-y4, 0)) scale(0.4);
+  }
+}
+
+/* Sparkle positions for different angles (8 sparkles in a circle) */
+/* Note: nth-child starts from 4 because gun-container, muzzle-flash, and bullet are children 1-3 */
+.sparkle:nth-child(4) {
+  --sparkle-x: 20px;
+  --sparkle-y: 0px;
+  --sparkle-x2: 40px;
+  --sparkle-y2: 0px;
+  --sparkle-x3: 60px;
+  --sparkle-y3: 0px;
+  --sparkle-x4: 80px;
+  --sparkle-y4: 0px;
+  animation-delay: 0s;
+}
+
+.sparkle:nth-child(5) {
+  --sparkle-x: 14px;
+  --sparkle-y: -14px;
+  --sparkle-x2: 28px;
+  --sparkle-y2: -28px;
+  --sparkle-x3: 42px;
+  --sparkle-y3: -42px;
+  --sparkle-x4: 56px;
+  --sparkle-y4: -56px;
+  animation-delay: 0.1s;
+}
+
+.sparkle:nth-child(6) {
+  --sparkle-x: 0px;
+  --sparkle-y: -20px;
+  --sparkle-x2: 0px;
+  --sparkle-y2: -40px;
+  --sparkle-x3: 0px;
+  --sparkle-y3: -60px;
+  --sparkle-x4: 0px;
+  --sparkle-y4: -80px;
+  animation-delay: 0.2s;
+}
+
+.sparkle:nth-child(7) {
+  --sparkle-x: -14px;
+  --sparkle-y: -14px;
+  --sparkle-x2: -28px;
+  --sparkle-y2: -28px;
+  --sparkle-x3: -42px;
+  --sparkle-y3: -42px;
+  --sparkle-x4: -56px;
+  --sparkle-y4: -56px;
+  animation-delay: 0.3s;
+}
+
+.sparkle:nth-child(8) {
+  --sparkle-x: -20px;
+  --sparkle-y: 0px;
+  --sparkle-x2: -40px;
+  --sparkle-y2: 0px;
+  --sparkle-x3: -60px;
+  --sparkle-y3: 0px;
+  --sparkle-x4: -80px;
+  --sparkle-y4: 0px;
+  animation-delay: 0.4s;
+}
+
+.sparkle:nth-child(9) {
+  --sparkle-x: -14px;
+  --sparkle-y: 14px;
+  --sparkle-x2: -28px;
+  --sparkle-y2: 28px;
+  --sparkle-x3: -42px;
+  --sparkle-y3: 42px;
+  --sparkle-x4: -56px;
+  --sparkle-y4: 56px;
+  animation-delay: 0.5s;
+}
+
+.sparkle:nth-child(10) {
+  --sparkle-x: 0px;
+  --sparkle-y: 20px;
+  --sparkle-x2: 0px;
+  --sparkle-y2: 40px;
+  --sparkle-x3: 0px;
+  --sparkle-y3: 60px;
+  --sparkle-x4: 0px;
+  --sparkle-y4: 80px;
+  animation-delay: 0.6s;
+}
+
+.sparkle:nth-child(11) {
+  --sparkle-x: 14px;
+  --sparkle-y: 14px;
+  --sparkle-x2: 28px;
+  --sparkle-y2: 28px;
+  --sparkle-x3: 42px;
+  --sparkle-y3: 42px;
+  --sparkle-x4: 56px;
+  --sparkle-y4: 56px;
+  animation-delay: 0.7s;
+}
