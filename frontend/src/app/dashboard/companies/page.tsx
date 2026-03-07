@@ -200,17 +200,17 @@ export default function CompaniesPage() {
     try {
       const response = await api.get(`/company/${companyId}`);
       if (response.status === 'success') {
-        // Get all personnel assigned to this company (including all statuses)
-        const companyPersonnelList = response.data.company.company_personnel?.map((cp: any) => ({
+        // Get personnel assigned to this company - filter to Officers rank category only (exclude JCO and Other Ranks)
+        const allPersonnel = response.data.company.company_personnel?.map((cp: any) => ({
           id: cp.personnel.id,
           army_no: cp.personnel.army_no,
           name: cp.personnel.name,
           rank: cp.personnel.rank,
-          status: cp.personnel.status
+          status: cp.personnel.status,
+          rankCategoryName: cp.personnel.rank_info?.category?.name
         })) || [];
-        
-        // Set the filtered personnel list to only show company members
-        setPersonnel(companyPersonnelList);
+        const officersOnly = allPersonnel.filter((p: { rankCategoryName?: string }) => p.rankCategoryName === 'Officers');
+        setPersonnel(officersOnly);
         setPersonnelLoading(false);
       }
     } catch (err: any) {
@@ -506,6 +506,10 @@ export default function CompaniesPage() {
                   </label>
                   {personnelLoading ? (
                     <div className="text-gray-400">Loading personnel...</div>
+                  ) : personnel.length === 0 ? (
+                    <div className="text-amber-400 text-sm">
+                      No officers in this company. Only Officers rank category can be assigned as Commander. Add officers to the company first.
+                    </div>
                   ) : (
                     <>
                       <select

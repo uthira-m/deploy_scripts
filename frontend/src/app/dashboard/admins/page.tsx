@@ -9,6 +9,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { adminsService, api, dashboardService } from "@/lib/api";
+import { validatePersonnelDob } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Personnel {
@@ -75,6 +76,7 @@ export default function AdminsPage() {
   const [formData, setFormData] = useState({
     army_no: "",
     name: "",
+    role: "Admin",
     rank: "General",
     unit: "",
     email: "",
@@ -165,6 +167,15 @@ export default function AdminsPage() {
       return;
     }
 
+    if (formData.dob) {
+      const dobError = validatePersonnelDob(formData.dob);
+      if (dobError) {
+        setError(dobError);
+        setFormLoading(false);
+        return;
+      }
+    }
+
     try {
       const cleanedFormData = {
         ...formData,
@@ -229,6 +240,7 @@ export default function AdminsPage() {
     setFormData({
       army_no: "",
       name: "",
+      role: "Admin",
       rank: "General",
       unit: "",
       email: "",
@@ -245,9 +257,11 @@ export default function AdminsPage() {
     setEditingPersonnel(person);
     const personAny = person as any;
     const firstCompanyId = personAny.company_personnel?.[0]?.company_id ?? personAny.company_personnel?.[0]?.company?.id ?? person.companies?.[0]?.id;
+    const userRole = (person as any).user?.role;
     setFormData({
       army_no: person.army_no || "",
       name: person.name || "",
+      role: userRole === "super_admin" ? "Super Admin" : "Admin",
       rank: person.rankInfo?.name || person.rank || "General",
       unit: person.unit || "",
       email: person.email || "",
@@ -287,6 +301,19 @@ export default function AdminsPage() {
         <div className="mx-auto p-4 lg:p-6">
           <div className="text-center py-12">
             <p className="text-red-400 text-lg">Access Denied. Admin access required.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Admins page: only accessible if user name is "Super Admin" (check by name, not role)
+  if (user?.name !== "Super Admin") {
+    return (
+      <ProtectedRoute>
+        <div className="mx-auto p-4 lg:p-6">
+          <div className="text-center py-12">
+            <p className="text-red-400 text-lg">Access Denied. Super Admin access required.</p>
           </div>
         </div>
       </ProtectedRoute>
@@ -339,7 +366,7 @@ export default function AdminsPage() {
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <input
               type="text"
-              placeholder="Search by name, army no, rank"
+              placeholder="Search by Admin Id"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -365,12 +392,8 @@ export default function AdminsPage() {
                 <thead className="bg-white/10">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">S.No</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Army No</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Admin Id</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Rank</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Service Duration</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -380,24 +403,11 @@ export default function AdminsPage() {
                       <td className="px-4 py-3 text-sm text-gray-300">{startIndex + index + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{person.army_no || '-'}</td>
                       <td className="px-4 py-3 text-sm text-white">{person.name || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-300">{person.rankInfo?.name || person.rank || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-300">{formatServiceDuration(person.doe)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-300">{getCompanyNames(person)}</td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          person.dynamic_status === 'Available' ? 'bg-green-500/20 text-green-300' :
-                          person.dynamic_status === 'On Leave' ? 'bg-yellow-500/20 text-yellow-300' :
-                          person.dynamic_status === 'On ERE' ? 'bg-blue-500/20 text-blue-300' :
-                          'bg-gray-500/20 text-gray-300'
-                        }`}>
-                          {person.dynamic_status || 'Available'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 ">
                           <Link
                             href={`/dashboard/personnel/${person.id}?from=admins`}
-                            className="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                            className="text-blue-400 hover:text-blue-300 hidden transition-colors cursor-pointer"
                             title="View Details"
                           >
                             <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,15 +426,17 @@ export default function AdminsPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                               </button> */}
-                              <button
-                                onClick={() => handleDelete(person.id)}
-                                className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                              {user?.id !== person.user_id && (
+                                <button
+                                  onClick={() => handleDelete(person.id)}
+                                  className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                                  title="Delete"
+                                >
+                                  <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
@@ -485,7 +497,7 @@ export default function AdminsPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Army No <span className="text-red-400">*</span></label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Army No<span className="text-red-400">*</span></label>
                     <input
                       type="text"
                       required
@@ -494,7 +506,7 @@ export default function AdminsPage() {
                       className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Name <span className="text-red-400">*</span></label>
                     <input
                       type="text"
@@ -503,12 +515,19 @@ export default function AdminsPage() {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
+                  </div> */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Rank</label>
-                    <div className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white">
-                      General
-                    </div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Admin Name <span className="text-red-400">*</span></label>
+                    <select
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                    >
+                      <option value="">Select Name</option>
+                      <option value="Admin">Admin</option>
+                      <option value="Super Admin">Super Admin</option>
+                    </select>
                   </div>
                   {/* <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">Unit</label>
@@ -552,7 +571,7 @@ export default function AdminsPage() {
                   </div>
                   <div>
                     <DateOfEntryInput
-                      label="Date of Enlistment"
+                      label="Date of Entry"
                       value={formData.doe}
                       onChange={(value) => setFormData({ ...formData, doe: value })}
                       className="px-4 py-2 bg-gray-700/50 border-gray-600"

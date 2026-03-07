@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
         pathname: '/uploads/**',
       },
       {
+        protocol: 'http',
+        hostname: '169.254.124.200',
+        port: '5003',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ipmas.mapskil.com',
+        pathname: '/uploads/**',
+      },
+      {
         protocol: 'https',
         hostname: '**',
         pathname: '/uploads/**',

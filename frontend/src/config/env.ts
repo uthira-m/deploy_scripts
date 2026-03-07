@@ -2,7 +2,9 @@ import { devConfig } from './config.dev';
 import { productionConfig } from './config.production';
 import { stageConfig } from './config.stage';
 
-let appEnv = 'production';
+const appEnv =
+  (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_APP_ENV) ||
+  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development' ? 'development' : 'production');
 
 export const config =
   appEnv === 'production'

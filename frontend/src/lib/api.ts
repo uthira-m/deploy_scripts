@@ -273,6 +273,36 @@ class PersonnelService {
     return this.api.post('/personnel', data);
   }
 
+  // Bulk upload personnel from Excel
+  async bulkUploadPersonnel(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.post('/personnel/bulk-upload', formData);
+  }
+
+  // Download personnel bulk upload template
+  async downloadPersonnelTemplate() {
+    const url = `${API_BASE_URL}/personnel/bulk-upload/template`;
+    const token = localStorage.getItem('token');
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to download template' }));
+      throw new Error(error.message || 'Failed to download template');
+    }
+
+    return {
+      data: await response.blob(),
+      status: response.status
+    };
+  }
+
   // Update personnel
   async updatePersonnel(id: number, data: any) {
     return this.api.put(`/personnel/${id}`, data);
@@ -281,6 +311,11 @@ class PersonnelService {
   // Delete personnel
   async deletePersonnel(id: number) {
     return this.api.delete(`/personnel/${id}`);
+  }
+
+  // Reset personnel password to DOB (DDMMYYYY). Admin only.
+  async resetPassword(id: number) {
+    return this.api.post(`/personnel/${id}/reset-password`, {});
   }
 
   // Upload personnel photo
@@ -1146,8 +1181,10 @@ class QuickFiltersService {
 
   // Get quick filtered personnel
   async getQuickFilteredPersonnel(params: {
-    nominal_role_type?: string;
-    nominal_role_id?: number;
+    company_id?: number;
+    rank_id?: number;
+    platoon_id?: number;
+    tradesman_id?: number;
     education_type?: string;
     sports_event_name?: string;
     blood_group?: string;
@@ -1158,8 +1195,10 @@ class QuickFiltersService {
     limit?: number;
   }) {
     const queryParams = new URLSearchParams();
-    if (params.nominal_role_type) queryParams.append('nominal_role_type', params.nominal_role_type);
-    if (params.nominal_role_id) queryParams.append('nominal_role_id', params.nominal_role_id.toString());
+    if (params.company_id != null) queryParams.append('company_id', params.company_id.toString());
+    if (params.rank_id != null) queryParams.append('rank_id', params.rank_id.toString());
+    if (params.platoon_id != null) queryParams.append('platoon_id', params.platoon_id.toString());
+    if (params.tradesman_id != null) queryParams.append('tradesman_id', params.tradesman_id.toString());
     if (params.education_type) queryParams.append('education_type', params.education_type);
     if (params.sports_event_name) queryParams.append('sports_event_name', params.sports_event_name);
     if (params.blood_group) queryParams.append('blood_group', params.blood_group);
@@ -1191,7 +1230,8 @@ class ImageService {
   }
 
   // Upload image(s) - supports single or multiple files (max 10)
-  async uploadImage(files: File | File[], folder: 'dashboard' | 'personnel' | 'login') {
+  // For login: use folder 'login-left' or 'login-right' for specific side uploads
+  async uploadImage(files: File | File[], folder: 'dashboard' | 'personnel' | 'login' | 'login-left' | 'login-right') {
     const formData = new FormData();
     
     // Handle both single file and array of files
@@ -1238,8 +1278,8 @@ class ImageService {
     return decrypted ?? raw;
   }
 
-  // Delete image
-  async deleteImage(folder: 'dashboard' | 'personnel' | 'login', filename: string) {
+  // Delete image (folder can be login-left or login-right for login page images)
+  async deleteImage(folder: 'dashboard' | 'personnel' | 'login' | 'login-left' | 'login-right', filename: string) {
     return this.api.delete(`/images/${folder}/${filename}`);
   }
 }
@@ -1480,6 +1520,14 @@ export async function administratorGetAdmins(): Promise<{ success: boolean; admi
 export interface AppSettings {
   app_name: string;
   app_logo_url?: string;
+  /** Login page left portrait (CEO) */
+  login_left_name?: string;
+  login_left_army_number?: string;
+  login_left_rank?: string;
+  /** Login page right portrait (Director) */
+  login_right_name?: string;
+  login_right_army_number?: string;
+  login_right_rank?: string;
 }
 
 export async function getAppSettings(): Promise<{ success: boolean; settings?: AppSettings; message?: string }> {
@@ -1517,7 +1565,13 @@ export async function updateAppSettings(
       // Send empty string to clear logo, or the URL to set it
       payload.app_logo_url = settings.app_logo_url || "";
     }
-    
+    if (settings.login_left_name !== undefined) payload.login_left_name = settings.login_left_name;
+    if (settings.login_left_army_number !== undefined) payload.login_left_army_number = settings.login_left_army_number;
+    if (settings.login_left_rank !== undefined) payload.login_left_rank = settings.login_left_rank;
+    if (settings.login_right_name !== undefined) payload.login_right_name = settings.login_right_name;
+    if (settings.login_right_army_number !== undefined) payload.login_right_army_number = settings.login_right_army_number;
+    if (settings.login_right_rank !== undefined) payload.login_right_rank = settings.login_right_rank;
+
     const encryptedPayload = encryptRequestPayload(payload);
     const res = await fetch(`${API_BASE_URL}/app-settings`, {
       method: 'PUT',

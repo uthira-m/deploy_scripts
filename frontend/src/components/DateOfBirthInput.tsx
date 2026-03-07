@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 interface DateOfBirthInputProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
   label?: string;
   required?: boolean;
   className?: string;
@@ -12,13 +12,15 @@ interface DateOfBirthInputProps {
   id?: string;
   name?: string;
   disabled?: boolean;
-  minAge?: number; // Minimum age in years (default: 18). Set to 0 to allow any past date.
+  minAge?: number; // Minimum age in years (default: 18). Set to 0 for family members (no min).
+  maxAge?: number; // Maximum age in years (default: 50 for personnel). Use 100+ for family members.
 }
 
 /**
  * Reusable Date of Birth input component.
  * - Only allows past dates
  * - Requires minimum age (default: 18 years)
+ * - Maximum age 50 years for personnel (above 50 throws validation error)
  * - Prevents future dates
  */
 export default function DateOfBirthInput({
@@ -32,41 +34,35 @@ export default function DateOfBirthInput({
   name = "dob",
   disabled = false,
   minAge = 18,
+  maxAge = 50,
 }: DateOfBirthInputProps) {
-  // Calculate maximum date (minAge years ago from today, or today if minAge is 0)
+  // Calculate max date (youngest allowed = minAge years ago)
   const maxDate = useMemo(() => {
     const today = new Date();
     if (minAge === 0) {
       return today.toISOString().split("T")[0];
     }
-    const maxDate = new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate());
-    return maxDate.toISOString().split("T")[0];
+    const d = new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate());
+    return d.toISOString().split("T")[0];
   }, [minAge]);
 
-  // Calculate minimum date (reasonable past date, e.g., 100 years ago)
+  // Calculate min date (oldest allowed = maxAge years ago, or 100 if no maxAge)
   const minDate = useMemo(() => {
     const today = new Date();
-    const minDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
-    return minDate.toISOString().split("T")[0];
-  }, []);
+    const yearsBack = maxAge ?? 100;
+    const d = new Date(today.getFullYear() - yearsBack, today.getMonth(), today.getDate());
+    return d.toISOString().split("T")[0];
+  }, [maxAge]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedDate = e.target.value;
-    if (selectedDate && minAge > 0) {
-      const selected = new Date(selectedDate);
-      const today = new Date();
-      const age = today.getFullYear() - selected.getFullYear();
-      const monthDiff = today.getMonth() - selected.getMonth();
-      const dayDiff = today.getDate() - selected.getDate();
-      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
-
-      // Validate minimum age
-      if (actualAge < minAge) {
-        return; // Don't update if under minimum age
-      }
-    }
-    onChange(selectedDate);
+    onChange?.(e.target.value);
   };
+
+  const ageHint = minAge > 0 && maxAge != null && maxAge > 0 && maxAge < 100
+    ? `Age must be above ${minAge} and below ${maxAge} years`
+    : minAge > 0
+      ? `Minimum age: ${minAge} years`
+      : null;
 
   return (
     <div>
@@ -94,10 +90,8 @@ export default function DateOfBirthInput({
       {error && (
         <p className="text-red-400 text-sm mt-1">{error}</p>
       )}
-      {value && minAge > 0 && (
-        <p className="text-gray-400 text-xs mt-1">
-          Minimum age: {minAge} years
-        </p>
+      {ageHint && (
+        <p className="text-gray-400 text-xs mt-1">{ageHint}</p>
       )}
     </div>
   );

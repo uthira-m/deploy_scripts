@@ -1176,7 +1176,13 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-white font-medium text-sm">{new Date(notification.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          <p className="text-white font-medium text-sm">{(() => {
+                          const d = new Date(notification.date);
+                          const day = String(d.getDate()).padStart(2, '0');
+                          const month = d.toLocaleString('en-GB', { month: 'short' });
+                          const year = d.getFullYear();
+                          return `${day} ${month} ${year}`;
+                        })()}</p>
                           <p className={`text-xs font-semibold ${
                             notification.type === 'Course' ? 'text-blue-400' :
                             notification.type === 'ERE' ? 'text-orange-400' :
@@ -1240,7 +1246,6 @@ export default function Dashboard() {
                           stroke="#9CA3AF" 
                           fontSize={10}
                           tick={{ fill: '#9CA3AF' }}
-                          angle={-45}
                           textAnchor="end"
                           height={60}
                         />

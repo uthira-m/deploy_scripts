@@ -15,4 +15,17 @@ export const stageConfig = {
   NODE_ENV: 'stage' as const,
   IS_PRODUCTION: false,
   IS_DEVELOPMENT: false,
+
+  /** Login page left portrait (CEO) - name, army number, rank */
+  LOGIN_LEFT_PERSONNEL: {
+    name: '',
+    armyNumber: '',
+    rank: '',
+  },
+  /** Login page right portrait (Director) - name, army number, rank */
+  LOGIN_RIGHT_PERSONNEL: {
+    name: '',
+    armyNumber: '',
+    rank: '',
+  },
 } as const;

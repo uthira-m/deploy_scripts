@@ -3,11 +3,22 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
 import logo1Image from "@/assets/Garhwal_Crest-White.png";
+import { imageService, getAppSettings } from "@/lib/api";
+import { config } from "@/config/env";
 import "./page.css";
+
+interface LoginImage {
+  filename: string;
+  file_path: string;
+  file_size?: number;
+}
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [armyNo, setArmyNo] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [animationStage, setAnimationStage] = useState<
@@ -20,6 +31,63 @@ export default function LoginPage() {
       const text = "BORN FOR BATTLE";
   const [animate, setAnimate] = useState(false);
   const [animateYear, setAnimateYear] = useState(false);
+  const [loginImages, setLoginImages] = useState<LoginImage[]>([]);
+  const [leftPersonnel, setLeftPersonnel] = useState({ name: "", armyNumber: "", rank: "" });
+  const [rightPersonnel, setRightPersonnel] = useState({ name: "", armyNumber: "", rank: "" });
+  const BACKEND_URL = config.BACKEND_URL;
+  const configLeft = config.LOGIN_LEFT_PERSONNEL ?? { name: "", armyNumber: "", rank: "" };
+  const configRight = config.LOGIN_RIGHT_PERSONNEL ?? { name: "", armyNumber: "", rank: "" };
+
+  useEffect(() => {
+    const fetchLoginImages = async () => {
+      try {
+        const res = await imageService.getLoginImages();
+        if (res?.status === "success" && Array.isArray(res.data)) {
+          setLoginImages(res.data);
+        }
+      } catch {
+        // Ignore - login page works without images
+      }
+    };
+    fetchLoginImages();
+  }, []);
+
+  useEffect(() => {
+    const fetchAppSettings = async () => {
+      try {
+        const result = await getAppSettings();
+        if (result.success && result.settings) {
+          const s = result.settings as Record<string, string>;
+          if (s.login_left_name || s.login_left_army_number || s.login_left_rank) {
+            setLeftPersonnel({
+              name: s.login_left_name ?? configLeft.name,
+              armyNumber: s.login_left_army_number ?? configLeft.armyNumber ?? "",
+              rank: s.login_left_rank ?? configLeft.rank,
+            });
+          } else {
+            setLeftPersonnel(configLeft);
+          }
+          if (s.login_right_name || s.login_right_army_number || s.login_right_rank) {
+            setRightPersonnel({
+              name: s.login_right_name ?? configRight.name,
+              armyNumber: s.login_right_army_number ?? configRight.armyNumber ?? "",
+              rank: s.login_right_rank ?? configRight.rank,
+            });
+          } else {
+            setRightPersonnel(configRight);
+          }
+        } else {
+          setLeftPersonnel(configLeft);
+          setRightPersonnel(configRight);
+        }
+      } catch {
+        setLeftPersonnel(configLeft);
+        setRightPersonnel(configRight);
+      }
+    };
+    fetchAppSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Start animation on load
@@ -100,12 +168,8 @@ export default function LoginPage() {
     if (!isLoading && isAuthenticated && requiresPasswordChange) {
       router.push("/change-password");
     } else if (!isLoading && isAuthenticated && user) {
-      // Redirect personnel to my-profile, others to dashboard
-      if (user.role === "personnel") {
-        router.push("/dashboard/my-profile");
-      } else {
-        router.push("/dashboard");
-      }
+      // Redirect all users to dashboard
+      router.push("/dashboard");
     }
   }, [isAuthenticated, isLoading, requiresPasswordChange, router]);
 
@@ -130,19 +194,14 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const army_no = (document.getElementById("army_no") as HTMLInputElement)
-      .value;
-    const password = (document.getElementById("password") as HTMLInputElement)
-      .value;
-
-    if (!army_no || !password) {
+    if (!armyNo || !password) {
       setError("Please enter both Army Number and password");
       setLoading(false);
       return;
     }
 
     try {
-      await login(army_no, password, true);
+      await login(armyNo, password, true);
       // Redirect will be handled by useEffect after user state updates
     } catch (err: any) {
       if (err.message) {
@@ -193,9 +252,37 @@ export default function LoginPage() {
             : "opacity-0 translate-y-8"
         }`}
       >
-        <div className=" w-full max-w-[480px] mx-auto">
+        <div className="login-three-column w-full">
           <div className="bg-overlay" />
 
+          {/* Left portrait - CEO (only show circle when image is uploaded) */}
+          <div className="login-side-image login-image-left left-section-animate">
+            <div className="login-portrait-wrapper">
+              {loginImages[0] && (
+                <>
+                  <div className="login-portrait-circle">
+                    <Image
+                      src={`${BACKEND_URL}${loginImages[0].file_path}`}
+                      alt={leftPersonnel.name}
+                      width={170}
+                      height={170}
+                      className="login-portrait-img"
+                    />
+                  </div>
+                  <div className="login-portrait-info">
+                    <div className="login-portrait-name">{leftPersonnel.name}</div>
+                    {leftPersonnel.armyNumber && (
+                      <div className="login-portrait-army">{leftPersonnel.armyNumber}</div>
+                    )}
+                    <div className="login-portrait-rank">{leftPersonnel.rank}</div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Center - Login form */}
+          <div className="login-form-center">
           <div className="login-content">
             <div className="login-logo">
               <Image
@@ -207,7 +294,7 @@ export default function LoginPage() {
                 priority
               />
             </div>
-            <h1 className="login-title">SIGN IN</h1>
+            <h1 className="login-title uppercase">towering twelfth</h1>
             <div className="tagline">
               <div className="premium-typography-container animate-fade-in">
                 <div className="flex items-center justify-center mb-6">
@@ -263,30 +350,46 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
-            <div className="input-box">
+            <form
+              className="input-box"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleButtonClick();
+              }}
+            >
               <div>
-                {/* <label htmlFor="army_no" className="block text-gray-700 mb-2 font-medium text-sm">Army Number</label> */}
                 <input
                   id="army_no"
                   name="army_no"
                   type="text"
                   autoComplete="username"
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={armyNo}
+                  onChange={(e) => setArmyNo(e.target.value)}
+                  onInput={(e) => {
+                    const v = (e.target as HTMLInputElement).value;
+                    if (v !== armyNo) setArmyNo(v);
+                  }}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Army Number"
                   disabled={loading}
                 />
               </div>
 
               <div className="relative">
-                {/* <label htmlFor="password" className="block text-gray-700 mb-2 font-medium text-sm">Password</label> */}
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onInput={(e) => {
+                    const v = (e.target as HTMLInputElement).value;
+                    if (v !== password) setPassword(v);
+                  }}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                   placeholder="Enter your password"
                   disabled={loading}
                 />
@@ -299,39 +402,12 @@ export default function LoginPage() {
                   disabled={loading}
                 >
                   {showPassword ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.403-3.22 1.125-4.575m2.1-2.1A9.956 9.956 0 0112 3c5.523 0 10 4.477 10 10 0 1.657-.403 3.22-1.125 4.575m-2.1 2.1A9.956 9.956 0 0112 21c-5.523 0-10-4.477-10-10 0-1.657.403 3.22-1.125 4.575"
-                      />
-                    </svg>
+                    <EyeOff className="h-5 w-5" />
                   ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
-                      />
-                    </svg>
+                    <Eye className="h-5 w-5" />
                   )}
                 </button>
               </div>
-            </div>
             {error && (
               <div
                 className="mt-3 p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-sm text-center"
@@ -341,11 +417,8 @@ export default function LoginPage() {
               </div>
             )}
             <div className="flex justify-center">
-
-         
             <button
-              type="button"
-              onClick={handleButtonClick}
+              type="submit"
               className=" login-btn w-full cursor-pointer bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:bg-white/15 hover:border-white/30 focus:outline-none focus:ring-4 focus:ring-white/20 shadow-lg shadow-black/20 flex items-center justify-center gap-2 mt-2"
               disabled={loading}
             >
@@ -373,6 +446,34 @@ export default function LoginPage() {
               )}
               Sign In
             </button>
+            </div>
+            </form>
+          </div>
+          </div>
+
+          {/* Right portrait - Director (only show circle when image is uploaded) */}
+          <div className="login-side-image login-image-right form-container">
+            <div className="login-portrait-wrapper">
+              {loginImages[1] && (
+                <>
+                  <div className="login-portrait-circle">
+                    <Image
+                      src={`${BACKEND_URL}${loginImages[1].file_path}`}
+                      alt={rightPersonnel.name}
+                      width={170}
+                      height={170}
+                      className="login-portrait-img"
+                    />
+                  </div>
+                  <div className="login-portrait-info">
+                    <div className="login-portrait-name">{rightPersonnel.name}</div>
+                    {rightPersonnel.armyNumber && (
+                      <div className="login-portrait-army">{rightPersonnel.armyNumber}</div>
+                    )}
+                    <div className="login-portrait-rank">{rightPersonnel.rank}</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

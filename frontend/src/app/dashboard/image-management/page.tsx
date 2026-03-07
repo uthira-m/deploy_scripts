@@ -3,17 +3,19 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
-import { imageService, whatsNewService } from "@/lib/api";
+import { imageService, whatsNewService, getAppSettings, updateAppSettings } from "@/lib/api";
 import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, FileText } from "lucide-react";
 import Image from "next/image";
 import { config } from "@/config/env";
+import { useNotification } from "@/contexts/NotificationContext";
 
 interface ImageFile {
   filename: string;
   file_path: string;
   file_size: number;
-  created_at: string;
-  modified_at: string;
+  created_at?: string;
+  modified_at?: string;
+  folder?: string; // login-left | login-right | login (legacy)
 }
 
 type TabType = 'dashboard' | 'personnel' | 'whats-new';
@@ -33,7 +35,14 @@ export default function ImageManagementPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+   const { success: notifySuccess, error: notifyError } = useNotification();
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [imageToDeleteFolder, setImageToDeleteFolder] = useState<string | null>(null);
+  const [loginPersonnel, setLoginPersonnel] = useState({
+    left: { name: "", armyNumber: "", rank: "" },
+    right: { name: "", armyNumber: "", rank: "" },
+  });
+  const [savingLoginPersonnel, setSavingLoginPersonnel] = useState(false);
 
   const BACKEND_URL = config.BACKEND_URL;
 
@@ -77,20 +86,93 @@ export default function ImageManagementPage() {
     fetchImages();
   }, []);
 
+  useEffect(() => {
+    if (selectedFolder === "login") {
+      getAppSettings().then((result) => {
+        if (result.success && result.settings) {
+          const s = result.settings as Record<string, string>;
+          setLoginPersonnel({
+            left: {
+              name: s.login_left_name ?? "",
+              armyNumber: s.login_left_army_number ?? "",
+              rank: s.login_left_rank ?? "",
+            },
+            right: {
+              name: s.login_right_name ?? "",
+              armyNumber: s.login_right_army_number ?? "",
+              rank: s.login_right_rank ?? "",
+            },
+          });
+        }
+      });
+    }
+  }, [selectedFolder]);
+
+  const handleSaveLoginPersonnel = async () => {
+    try {
+      setSavingLoginPersonnel(true);
+      setError(null);
+      setSuccess(null);
+      await updateAppSettings({
+        login_left_name: loginPersonnel.left.name,
+        login_left_army_number: loginPersonnel.left.armyNumber,
+        login_left_rank: loginPersonnel.left.rank,
+        login_right_name: loginPersonnel.right.name,
+        login_right_army_number: loginPersonnel.right.armyNumber,
+        login_right_rank: loginPersonnel.right.rank,
+      });
+      notifySuccess("Login personnel details saved successfully");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingLoginPersonnel(false);
+    }
+  };
+
+  const handleFileSelectForLogin = async (files: FileList | null, position: 'left' | 'right') => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      notifyError(`"${file.name}" is not an image file`);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      notifyError(`"${file.name}" exceeds 10MB size limit`);
+      return;
+    }
+    const folder = position === 'left' ? 'login-left' : 'login-right';
+    try {
+      setUploading(true);
+      setUploadProgress({ current: 1, total: 1 });
+      setError(null);
+      setSuccess(null);
+      await imageService.uploadImage(file, folder);
+      notifySuccess(`${position === 'left' ? 'Left' : 'Right'} side image uploaded successfully`);
+      setUploadProgress(null);
+      await fetchImages();
+    } catch (err: any) {
+      notifyError(err.message || 'Failed to upload');
+      setUploadProgress(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    // Login folder allows max 2 images; others allow 10
-    const maxFiles = selectedFolder === 'login' ? 2 : 10;
-    if (files.length > maxFiles) {
-      setError(selectedFolder === 'login'
-        ? 'Login page shows 2 images (left and right). Maximum 2 images can be uploaded.'
-        : 'Maximum 10 images can be uploaded at a time');
+    const fileArray = Array.from(files);
+
+    // Login tab uses handleFileSelectForLogin - should not reach here
+    if (selectedFolder === 'login') {
       return;
     }
 
-    // Convert FileList to Array for easier processing
-    const fileArray = Array.from(files);
+    // Other folders: max 10 at a time
+    if (fileArray.length > 10) {
+      setError('Maximum 10 images can be uploaded at a time');
+      return;
+    }
     const isWhatsNew = selectedFolder === 'whats-new';
 
     if (isWhatsNew) {
@@ -153,8 +235,9 @@ export default function ImageManagementPage() {
     }
   };
 
-  const handleDeleteClick = (filename: string) => {
+  const handleDeleteClick = (filename: string, folder?: string) => {
     setImageToDelete(filename);
+    setImageToDeleteFolder(folder ?? null);
     setShowDeleteConfirm(true);
   };
 
@@ -171,7 +254,10 @@ export default function ImageManagementPage() {
         await whatsNewService.deleteDocument(imageToDelete);
         setSuccess('Document deleted successfully');
       } else {
-        await imageService.deleteImage(selectedFolder, imageToDelete);
+        const folder = selectedFolder === 'login' && imageToDeleteFolder
+          ? imageToDeleteFolder as 'login-left' | 'login-right'
+          : selectedFolder;
+        await imageService.deleteImage(folder, imageToDelete);
         setSuccess('Image deleted successfully');
       }
       await fetchImages();
@@ -181,6 +267,7 @@ export default function ImageManagementPage() {
     } finally {
       setDeleting(null);
       setImageToDelete(null);
+      setImageToDeleteFolder(null);
     }
   };
 
@@ -289,7 +376,51 @@ export default function ImageManagementPage() {
             </div>
           </div>
 
-          {/* Upload Section */}
+          {/* Upload Section - Login tab has separate Left/Right upload zones */}
+          {selectedFolder === 'login' ? (
+            <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-blue-400 mb-3">Left Side Image</h3>
+                <p className="text-gray-400 text-sm mb-4">Upload image for the left portrait on the login page.</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => { handleFileSelectForLogin(e.target.files, 'left'); e.target.value = ''; }}
+                  className="hidden"
+                  id="file-upload-left"
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="file-upload-left"
+                  className={`cursor-pointer flex flex-col items-center gap-3 p-6 border-2 border-dashed rounded-lg transition-all duration-300 ${uploading ? 'opacity-60 cursor-not-allowed' : 'border-white/20 hover:border-white/40'}`}
+                >
+                  {uploading ? <Loader2 className="w-10 h-10 text-blue-400 animate-spin" /> : <Upload className="w-10 h-10 text-gray-400" />}
+                  <span className="text-white font-medium text-sm">Click to upload left image</span>
+                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 10MB</span>
+                </label>
+              </div>
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-blue-400 mb-3">Right Side Image</h3>
+                <p className="text-gray-400 text-sm mb-4">Upload image for the right portrait on the login page.</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => { handleFileSelectForLogin(e.target.files, 'right'); e.target.value = ''; }}
+                  className="hidden"
+                  id="file-upload-right"
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="file-upload-right"
+                  className={`cursor-pointer flex flex-col items-center gap-3 p-6 border-2 border-dashed rounded-lg transition-all duration-300 ${uploading ? 'opacity-60 cursor-not-allowed' : 'border-white/20 hover:border-white/40'}`}
+                >
+                  {uploading ? <Loader2 className="w-10 h-10 text-blue-400 animate-spin" /> : <Upload className="w-10 h-10 text-gray-400" />}
+                  <span className="text-white font-medium text-sm">Click to upload right image</span>
+                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 10MB</span>
+                </label>
+              </div>
+            </div>
+          ) : (
           <div className="mb-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">
@@ -298,14 +429,11 @@ export default function ImageManagementPage() {
               <div className="flex gap-2">
                 <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-lg">
                   <span className="text-blue-400 text-sm font-medium">
-                    Uploading to: {selectedFolder === 'whats-new' ? "What's New" : selectedFolder === 'dashboard' ? 'Dashboard' :  selectedFolder==='login'? 'Login' :'Personnel'}
+                    Uploading to: {selectedFolder === 'whats-new' ? "What's New" : selectedFolder === 'dashboard' ? 'Dashboard' : 'Personnel'}
                   </span>
                 </div>
                 <div className="px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg">
-                  <span className="text-amber-400 text-sm font-medium">
-                    {/* Max 10 files */}
-                    {selectedFolder === 'login' ? 'Max 2 images (left & right)' : 'Max 10 images'}
-                  </span>
+                  <span className="text-amber-400 text-sm font-medium">Max 10 images</span>
                 </div>
               </div>
             </div>
@@ -379,11 +507,79 @@ export default function ImageManagementPage() {
               </label>
             </div>
           </div>
+          )}
+
+          {/* Login personnel config - shown when Login tab is selected */}
+          {selectedFolder === "login" && (
+            <div className="mb-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Login Page Personnel Details</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Configure name, army number, and rank shown below each portrait on the login screen.
+              </p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-blue-400 font-medium">Left</h3>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={loginPersonnel.left.name}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, left: { ...p.left, name: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Army Number"
+                    value={loginPersonnel.left.armyNumber}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, left: { ...p.left, armyNumber: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Rank "
+                    value={loginPersonnel.left.rank}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, left: { ...p.left, rank: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-blue-400 font-medium">Right</h3>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={loginPersonnel.right.name}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, right: { ...p.right, name: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Army Number"
+                    value={loginPersonnel.right.armyNumber}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, right: { ...p.right, armyNumber: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Rank "
+                    value={loginPersonnel.right.rank}
+                    onChange={(e) => setLoginPersonnel((p) => ({ ...p, right: { ...p.right, rank: e.target.value } }))}
+                    className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveLoginPersonnel}
+                disabled={savingLoginPersonnel}
+                className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 rounded-lg text-white font-medium"
+              >
+                {savingLoginPersonnel ? "Saving..." : "Save Personnel Details"}
+              </button>
+            </div>
+          )}
 
           {/* Files List */}
           <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">
-              {selectedFolder === 'dashboard' ? 'Dashboard' : selectedFolder === 'personnel' ? 'Personnel' : selectedFolder==='login'?'Login': "What's New"} {selectedFolder === 'whats-new' ? 'Documents' : 'Images'} ({currentImages.length})
+              {selectedFolder === 'dashboard' ? 'Dashboard' : selectedFolder === 'personnel' ? 'Personnel' : selectedFolder === 'login' ? 'Login' : "What's New"} {selectedFolder === 'whats-new' ? 'Documents' : 'Images'} {selectedFolder !== 'login' && `(${currentImages.length})`}
             </h2>
 
             {loading ? (
@@ -436,14 +632,9 @@ export default function ImageManagementPage() {
                     </div>
                   </div>
                 ))}
-                {/* <ImageIcon className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-400">No images uploaded yet</p> */}
-                {selectedFolder === 'login' && (
-                  <p className="text-gray-500 text-sm mt-2">Upload up to 2 images to show on left and right of login form</p>
-                )}
               </div>
             ) : (
-              <div className={`grid gap-4 ${selectedFolder === 'login' ? 'grid-cols-2 max-w-md mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7'}`}>
+              <div className={`grid gap-4  grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7`}>
                 {currentImages.map((image) => (
                   <div
                     key={image.filename}
@@ -458,7 +649,7 @@ export default function ImageManagementPage() {
                         sizes="(max-width: 340px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
                       <button
-                        onClick={() => handleDeleteClick(image.filename)}
+                        onClick={() => handleDeleteClick(image.filename, image.folder)}
                         disabled={deleting === image.filename}
                         className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 disabled:opacity-50"
                       >

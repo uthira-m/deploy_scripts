@@ -9,21 +9,16 @@ export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Always redirect: authenticated -> dashboard (or my-profile for personnel), unauthenticated -> login
+  // Always redirect: authenticated -> dashboard, unauthenticated -> login
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        // Redirect personnel to my-profile, others to dashboard
-        if (user?.role === 'personnel') {
-          router.push("/dashboard/my-profile");
-        } else {
-          router.push("/dashboard");
-        }
+        router.push("/dashboard");
       } else {
         router.push("/login");
       }
     }
-  }, [isAuthenticated, isLoading, user, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   // Show loading while checking authentication
   if (isLoading) {

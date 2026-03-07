@@ -688,13 +688,13 @@ export default function PersonnelDetailsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '--';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-GB', { month: 'short' });
+    const year = d.getFullYear();
+    const time = d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} ${month} ${year}, ${time}`;
   };
 
   const handleDocFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -863,7 +863,25 @@ export default function PersonnelDetailsPage() {
     try {
       const response = await rankService.getAllRanks();
       if (response.status === "success" && response.data) {
-        setRanks(getRankListFromResponse(response.data));
+        const rankList = getRankListFromResponse(response.data);
+        // Sort by hierarchy: Officers first, JCO, then OR; within category by rank order
+        const catOrder = (r: Rank) => {
+          const cat = (r as any).category;
+          if (typeof cat === 'string') return cat.toLowerCase().includes('officer') && !cat.toLowerCase().includes('junior') ? 1 : cat.toLowerCase().includes('jco') ? 2 : 3;
+          return cat?.hierarchy_order ?? 999;
+        };
+        const RANK_ORDER: Record<string, number> = {
+          'Colonel': 1, 'Lieutenant Colonel': 2, 'Major': 3, 'Captain': 4, 'Lieutenant': 5,
+          'Subedar Major': 1, 'Subedar': 2, 'Naib Subedar': 3,
+          'Havaldar': 1, 'Lance Havaldar': 2, 'Naik': 3, 'Lance Naik': 4, 'Rifleman': 5, 'Agniveer': 6
+        };
+        const rankOrder = (r: Rank) => {
+          const o = (r as any).order ?? r.hierarchy_order;
+          if (o != null && o > 0) return o;
+          return RANK_ORDER[r.name?.trim() ?? ''] ?? 999;
+        };
+        rankList.sort((a, b) => catOrder(a) - catOrder(b) || rankOrder(a) - rankOrder(b));
+        setRanks(rankList);
       }
     } catch (err: any) {
       console.error("Error fetching ranks:", err);
@@ -4331,7 +4349,7 @@ export default function PersonnelDetailsPage() {
                             <p className="profile-field-label">Date of Marriage</p>
                             <p className="profile-field-value">
                               {personnel.date_of_marriage
-                                ? new Date(personnel.date_of_marriage).toLocaleDateString()
+                                ? formatDateShort(personnel.date_of_marriage)
                                 : "Not specified"}
                             </p>
                           </div>
@@ -5420,7 +5438,7 @@ export default function PersonnelDetailsPage() {
                               {detail.relationship_type !== 'father' && detail.relationship_type !== 'mother' && detail.dob && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-400">DOB:</span>
-                                  <span className="text-white">{new Date(detail.dob).toLocaleDateString()}</span>
+                                  <span className="text-white">{formatDateShort(detail.dob)}</span>
                                 </div>
                               )}
 
@@ -6629,6 +6647,7 @@ export default function PersonnelDetailsPage() {
                       }
                       label="Date of Birth"
                       minAge={0}
+                      maxAge={100}
                       className="px-4 py-3 rounded-lg bg-white/10 border-white/20 backdrop-blur-sm"
                     />
                   </div>
@@ -7501,7 +7520,7 @@ export default function PersonnelDetailsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="relative">
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      FORMATION
+                      FORMATION  <span className="text-red-400">*</span>
                     </label>
                     <select
                       value={othersFormData.out_station_formation_category}
@@ -7516,6 +7535,7 @@ export default function PersonnelDetailsPage() {
                           out_station_formation: hasSub ? "" : cat,
                         });
                       }}
+                      required
                       className="w-full appearance-none px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select Formation</option>
@@ -7549,7 +7569,7 @@ export default function PersonnelDetailsPage() {
                   ) && (
                     <div className="relative">
                       <label className="block text-gray-200 mb-2 text-sm font-medium">
-                        FORMATION SUB-CATEGORY
+                        FORMATION SUB-CATEGORY 
                       </label>
                       <select
                         value={othersFormData.out_station_formation}
@@ -7559,6 +7579,7 @@ export default function PersonnelDetailsPage() {
                             out_station_formation: e.target.value,
                           })
                         }
+                        
                         className="w-full appearance-none px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Select Sub-Category</option>
@@ -7592,7 +7613,7 @@ export default function PersonnelDetailsPage() {
                   )}
                   <div>
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      LOCATION
+                      LOCATION <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -7603,6 +7624,7 @@ export default function PersonnelDetailsPage() {
                           out_station_location: e.target.value,
                         })
                       }
+                      required
                       className="w-full px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter location"
                     />
@@ -7626,7 +7648,7 @@ export default function PersonnelDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      EMPLOYMENT
+                      EMPLOYMENT <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -7637,13 +7659,14 @@ export default function PersonnelDetailsPage() {
                           out_station_employment: e.target.value,
                         })
                       }
+                      required
                       className="w-full px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Enter employment details"
                     />
                   </div>
                   <div>
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      START DATE
+                      START DATE  <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="date"
@@ -7654,16 +7677,19 @@ export default function PersonnelDetailsPage() {
                           out_station_start_date: e.target.value,
                         })
                       }
+                      required
+                      
                       className="w-full px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      END DATE
+                      END DATE <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="date"
                       value={othersFormData.out_station_end_date}
+                      required
                       min={othersFormData.out_station_start_date || undefined}
                       onChange={(e) =>
                         setOthersFormData({

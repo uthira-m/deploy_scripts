@@ -168,13 +168,13 @@ export default function DocsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '--';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-GB', { month: 'short' });
+    const year = d.getFullYear();
+    const time = d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} ${month} ${year}, ${time}`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api, personnelService, personnelSportsService } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { config } from '@/config/env';
+import { formatDateShort } from '@/lib/utils';
 import { X, Download, Trophy, Lightbulb } from 'lucide-react';
 
 interface Profile {
@@ -900,27 +901,27 @@ export default function MyProfilePage() {
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs text-gray-500">Nature of Category</p>
+                          <p className="text-sm text-gray-500">Nature of Category</p>
                           <p className="text-white text-sm">{profile.natural_category || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">PC / BC</p>
+                          <p className="text-sm text-gray-500">PC / BC</p>
                           <p className="text-white text-sm">{profile.pc_bc || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Date of Medical Board</p>
+                          <p className="text-sm text-gray-500">Date of Medical Board</p>
                           <p className="text-white text-sm">{profile.date_of_medical_board ? formatDate(profile.date_of_medical_board) : 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Diagnosis</p>
+                          <p className="text-sm text-gray-500">Diagnosis</p>
                           <p className="text-white text-sm">{profile.diagnose || 'N/A'}</p>
                         </div>
                         <div className="sm:col-span-2">
-                          <p className="text-xs text-gray-500">Restriction Due to Category</p>
+                          <p className="text-sm text-gray-500">Restriction Due to Category</p>
                           <p className="text-white text-sm">{profile.restriction_due_to_cat || 'N/A'}</p>
                         </div>
                         <div className="sm:col-span-2">
-                          <p className="text-xs text-gray-500">Remarks</p>
+                          <p className="text-sm text-gray-500">Remarks</p>
                           <p className="text-white text-sm">{profile.remarks || 'N/A'}</p>
                         </div>
                       </div>
@@ -960,31 +961,31 @@ export default function MyProfilePage() {
                       </label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs text-gray-500">NOK</p>
+                          <p className="text-sm text-gray-500">NOK</p>
                           <p className="text-white text-sm">{profile.nok || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Account Number</p>
+                          <p className="text-sm text-gray-500">Account Number</p>
                           <p className="text-white text-sm">{profile.account_number || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">PAN Card</p>
+                          <p className="text-sm text-gray-500">PAN Card</p>
                           <p className="text-white text-sm">{profile.pan_card || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Aadhar Card</p>
+                          <p className="text-sm text-gray-500">Aadhar Card</p>
                           <p className="text-white text-sm">{profile.aadhar_card || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">DSP Account</p>
+                          <p className="text-sm text-gray-500">DSP Account</p>
                           <p className="text-white text-sm">{profile.dsp_account || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Blood Group</p>
+                          <p className="text-sm text-gray-500">Blood Group</p>
                           <p className="text-white text-sm">{profile.blood_group || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Date of Marriage</p>
+                          <p className="text-sm text-gray-500">Date of Marriage</p>
                           <p className="text-white text-sm">{profile.date_of_marriage ? formatDate(profile.date_of_marriage) : 'N/A'}</p>
                         </div>
                       </div>
@@ -1309,7 +1310,7 @@ export default function MyProfilePage() {
                               {detail.relationship_type !== 'father' && detail.relationship_type !== 'mother' && detail.dob && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-400">DOB:</span>
-                                  <span className="text-white">{new Date(detail.dob).toLocaleDateString()}</span>
+                                  <span className="text-white">{formatDateShort(detail.dob)}</span>
                                 </div>
                               )}
 
@@ -1491,7 +1492,7 @@ export default function MyProfilePage() {
                           </div>
                           <div>
                             <label className="text-sm font-medium text-gray-400">Year of Participation</label>
-                            <p className="text-white mt-1">{sport.year_of_participation ? new Date(sport.year_of_participation).toLocaleDateString() : 'N/A'}</p>
+                            <p className="text-white mt-1">{sport.year_of_participation ? formatDateShort(sport.year_of_participation) : 'N/A'}</p>
                           </div>
                           {sport.achievements && (
                             <div className="md:col-span-2">
@@ -1533,7 +1534,7 @@ export default function MyProfilePage() {
                             <td className="px-6 py-4 text-white text-sm capitalize">{doc.document_type}</td>
                             <td className="px-6 py-4 text-white text-sm">{doc.original_name}</td>
                             <td className="px-6 py-4 text-gray-300 text-sm">{(doc.file_size / 1024).toFixed(2)} KB</td>
-                            <td className="px-6 py-4 text-gray-300 text-sm">{new Date(doc.uploaded_at).toLocaleDateString()}</td>
+                            <td className="px-6 py-4 text-gray-300 text-sm">{formatDateShort(doc.uploaded_at)}</td>
                             <td className="px-6 py-4">
                               <button
                                 onClick={() => viewDocument(doc)}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAppSettings } from "@/contexts/AppSettingsContext";
 import { config } from "@/config/env";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
+import { validatePersonnelDob } from "@/lib/utils";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import {
   administratorStaticLogin,
@@ -170,6 +171,15 @@ function AdminContent({
     setCreatingAdmin(true);
     setAdminError(null);
     setAdminSuccess(null);
+
+    if (adminFormData.dob) {
+      const dobError = validatePersonnelDob(adminFormData.dob);
+      if (dobError) {
+        setAdminError(dobError);
+        setCreatingAdmin(false);
+        return;
+      }
+    }
     
     try {
       const result = await administratorCreateAdmin({

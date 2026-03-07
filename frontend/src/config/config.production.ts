@@ -15,4 +15,15 @@ export const productionConfig = {
   NODE_ENV: 'production' as const,
   IS_PRODUCTION: true,
   IS_DEVELOPMENT: false,
+
+  LOGIN_LEFT_PERSONNEL: {
+    name: '',
+    armyNumber: '',
+    rank: '',
+  },
+  LOGIN_RIGHT_PERSONNEL: {
+    name: '',
+    armyNumber: '',
+    rank: '',
+  },
 } as const;

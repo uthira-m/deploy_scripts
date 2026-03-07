@@ -9,6 +9,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, personnelEducationService, personnelSportsService, medicalCategoryService, api } from "@/lib/api";
+import { validatePersonnelDob } from "@/lib/utils";
 
 interface Personnel {
   id: number;
@@ -405,7 +406,25 @@ export default function EditPersonnelPage() {
     try {
       const response = await rankService.getAllRanks();
       if (response.status === 'success' && response.data) {
-        setRanks(getRankListFromResponse(response.data));
+        const rankList = getRankListFromResponse(response.data);
+        // Sort by hierarchy: Officers first, JCO, then OR; within category by rank order
+        const catOrder = (r: Rank) => {
+          const cat = (r as any).category;
+          if (typeof cat === 'string') return cat.toLowerCase().includes('officer') && !cat.toLowerCase().includes('junior') ? 1 : cat.toLowerCase().includes('jco') ? 2 : 3;
+          return cat?.hierarchy_order ?? 999;
+        };
+        const RANK_ORDER: Record<string, number> = {
+          'Colonel': 1, 'Lieutenant Colonel': 2, 'Major': 3, 'Captain': 4, 'Lieutenant': 5,
+          'Subedar Major': 1, 'Subedar': 2, 'Naib Subedar': 3,
+          'Havaldar': 1, 'Lance Havaldar': 2, 'Naik': 3, 'Lance Naik': 4, 'Rifleman': 5, 'Agniveer': 6
+        };
+        const rankOrder = (r: Rank) => {
+          const o = (r as any).order ?? r.hierarchy_order;
+          if (o != null && o > 0) return o;
+          return RANK_ORDER[r.name?.trim() ?? ''] ?? 999;
+        };
+        rankList.sort((a, b) => catOrder(a) - catOrder(b) || rankOrder(a) - rankOrder(b));
+        setRanks(rankList);
       }
     } catch (err: any) {
       console.error('Error fetching ranks:', err);
@@ -514,6 +533,14 @@ export default function EditPersonnelPage() {
     // Validate phone number
     if (!validatePhone(formData.phone)) {
       return;
+    }
+
+    if (formData.dob) {
+      const dobError = validatePersonnelDob(formData.dob);
+      if (dobError) {
+        setError(dobError);
+        return;
+      }
     }
 
     try {

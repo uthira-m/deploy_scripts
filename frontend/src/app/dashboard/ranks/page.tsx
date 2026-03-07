@@ -5,7 +5,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
 import { rankService, rankCategoryService, api } from "@/lib/api";
-import { paginationConfig } from "@/config/pagination";
 import { Award } from 'lucide-react';
 
 interface Rank {
@@ -44,10 +43,6 @@ export default function RanksPage() {
   const [rankToDelete, setRankToDelete] = useState<Rank | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   const { user } = useAuth();
   const { canModify } = usePermissions();
@@ -58,18 +53,18 @@ export default function RanksPage() {
     is_active: true
   });
 
-  // Fetch data on component mount and when page/search changes
+  // Fetch data on component mount and when search changes
   useEffect(() => {
     fetchRanks();
     fetchRankCategories();
-  }, [page, searchTerm]);
+  }, [searchTerm]);
 
   const fetchRanks = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
+        page: '1',
+        limit: '1000', // Fetch all ranks in single page
         ...(searchTerm && { search: searchTerm })
       });
       
@@ -77,8 +72,6 @@ export default function RanksPage() {
       
       if (response.status === 'success' && response.data) {
         setRanks(response.data.ranks || []);
-        setTotalPages(response.data.pagination?.total_pages || 1);
-        setTotal(response.data.pagination?.total || 0);
       }
     } catch (error: any) {
       console.error('Error fetching ranks:', error);
@@ -271,10 +264,7 @@ export default function RanksPage() {
               type="text"
               placeholder="Search ranks..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(paginationConfig.DEFAULT_PAGE);
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-3 pl-10 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,7 +327,15 @@ export default function RanksPage() {
                   {/* Ranks List */}
                   <div className="space-y-1">
                     {categoryData.ranks
-                      .sort((a, b) => a.hierarchy_order - b.hierarchy_order)
+                      .sort((a, b) => {
+                        const RANK_ORDER: Record<string, number> = {
+                          'Colonel': 1, 'Lieutenant Colonel': 2, 'Major': 3, 'Captain': 4, 'Lieutenant': 5,
+                          'Subedar Major': 1, 'Subedar': 2, 'Naib Subedar': 3,
+                          'Havaldar': 1, 'Lance Havaldar': 2, 'Naik': 3, 'Lance Naik': 4, 'Rifleman': 5, 'Agniveer': 6
+                        };
+                        const order = (r: Rank) => { const o = (r as any).order ?? r.hierarchy_order; return (o != null && o > 0) ? o : (RANK_ORDER[r.name?.trim() ?? ''] ?? 999); };
+                        return order(a) - order(b);
+                      })
                       .map((rank) => (
                         <div key={rank.id} className="flex justify-between items-center text-gray-300 pl-4 py-1 hover:bg-white/5 rounded">
                           <span>• {rank.name}</span>
@@ -370,44 +368,6 @@ export default function RanksPage() {
               ))
           )}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-gray-300 text-sm">
-              Showing {filteredRanks.length} of {total} ranks
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 lg:px-4 py-2 rounded-lg text-sm cursor-pointer ${
-                    page === p
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20 transition-colors'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Add/Edit Form Modal */}
         {showAddForm && (

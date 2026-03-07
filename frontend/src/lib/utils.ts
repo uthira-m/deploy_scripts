@@ -44,14 +44,16 @@ export const calculateServiceDuration = (doeString: string): string => {
 };
 
 /**
- * Format date to a readable string
+ * Format date to a readable string (DD Month YYYY)
  * @param dateString - Date as string
  * @returns Formatted date string
  */
 export const formatDate = (dateString: string): string => {
   if (!dateString) return '--';
   
-  return new Date(dateString).toLocaleDateString('en-US', {
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return '--';
+  return d.toLocaleDateString('en-GB', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -59,18 +61,39 @@ export const formatDate = (dateString: string): string => {
 };
 
 /**
- * Format date to short format (MM/DD/YYYY)
+ * Format date to short format (DD/MM/YYYY)
  * @param dateString - Date as string
  * @returns Short formatted date string
  */
-export const formatDateShort = (dateString: string): string => {
+export const formatDateShort = (dateString: string | undefined | null): string => {
   if (!dateString) return '--';
   
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return '--';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+/**
+ * Validate personnel date of birth: age must be between 18 and 50 years.
+ * @param value - Date string (YYYY-MM-DD)
+ * @returns Error message or empty string if valid
+ */
+export const validatePersonnelDob = (value: string): string => {
+  if (!value) return '';
+  const birthDate = new Date(value);
+  const today = new Date();
+  if (isNaN(birthDate.getTime())) return 'Invalid date';
+  if (birthDate > today) return 'Date of birth cannot be in the future';
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  const dayDiff = today.getDate() - birthDate.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age--;
+  if (age < 18) return 'Age must be at least 18 years';
+  if (age > 50) return 'Age must not exceed 50 years';
+  return '';
 };
 
 /**

@@ -15,7 +15,8 @@ interface FilteredPersonnel {
   platoon: string | null;
   trades_name: string | null;
   sports_name: string | null;
-  education_category: string | null;
+  education_civilian: string | null;
+  education_military: string | null;
   blood_group: string | null;
   id: number;
   dynamic_status?: string;
@@ -53,9 +54,11 @@ export default function QuickFiltersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Filter states
-  const [nominalRoleType, setNominalRoleType] = useState<string>("");
-  const [nominalRoleId, setNominalRoleId] = useState<number | null>(null);
+  // Filter states - nominal role: all 4 dropdowns at once
+  const [companyId, setCompanyId] = useState<number | null>(null);
+  const [rankId, setRankId] = useState<number | null>(null);
+  const [platoonId, setPlatoonId] = useState<number | null>(null);
+  const [tradesmanId, setTradesmanId] = useState<number | null>(null);
   const [educationType, setEducationType] = useState<string>("");
   const [sportsEventName, setSportsEventName] = useState<string>("");
   const [bloodGroupFilter, setBloodGroupFilter] = useState<string>("");
@@ -81,8 +84,7 @@ export default function QuickFiltersPage() {
     education: false,
     sports: false,
     bloodGroup: false,
-    status: false,
-    date: false
+    statusDate: false
   });
 
   // Blood group options
@@ -107,12 +109,14 @@ export default function QuickFiltersPage() {
     { value: "TD", label: "TD" }
   ];
 
-  // Education options
-  const educationOptions = [
+  // Education options - Civilian and Military categories
+  const educationCivilianOptions = [
     { value: "10", label: "10th Standard" },
     { value: "12", label: "12th Standard" },
     { value: "under graduate", label: "Under Graduate" },
-    { value: "post graduate", label: "Post Graduate" },
+    { value: "post graduate", label: "Post Graduate" }
+  ];
+  const educationMilitaryOptions = [
     { value: "mri_pass", label: "MR I - Pass" },
     { value: "mri_yet_to_appear", label: "MR I - Yet to Appear" },
     { value: "mr_ii_pass", label: "MR II - Pass" },
@@ -148,8 +152,21 @@ export default function QuickFiltersPage() {
     try {
       const response = await rankService.getAllRanks();
       if (response.status === 'success' && response.data) {
-        // Handle both response structures: { data: ranks } or { data: { ranks: [...], pagination: {...} } }
-        setRanks(Array.isArray(response.data) ? response.data : (response.data.ranks || []));
+        const rankList = Array.isArray(response.data) ? response.data : (response.data.ranks || []);
+        // Sort by hierarchy: Officers first, JCO, then OR; within category by rank order
+        const catOrder = (r: Rank) => (r as any).category?.hierarchy_order ?? (r as any).category?.order ?? (r as any).category_id ?? 999;
+        const RANK_ORDER: Record<string, number> = {
+          'Colonel': 1, 'Lieutenant Colonel': 2, 'Major': 3, 'Captain': 4, 'Lieutenant': 5,
+          'Subedar Major': 1, 'Subedar': 2, 'Naib Subedar': 3,
+          'Havaldar': 1, 'Lance Havaldar': 2, 'Naik': 3, 'Lance Naik': 4, 'Rifleman': 5, 'Agniveer': 6
+        };
+        const rankOrder = (r: Rank) => {
+          const o = (r as any).order;
+          if (o != null && o > 0) return o;
+          return RANK_ORDER[r.name?.trim() ?? ''] ?? 999;
+        };
+        rankList.sort((a: Rank, b: Rank) => catOrder(a) - catOrder(b) || rankOrder(a) - rankOrder(b));
+        setRanks(rankList);
       }
     } catch (err: any) {
       console.error('Error fetching ranks:', err);
@@ -188,9 +205,17 @@ export default function QuickFiltersPage() {
         limit: paginationConfig.DEFAULT_LIMIT
       };
 
-      if (nominalRoleType && nominalRoleId) {
-        params.nominal_role_type = nominalRoleType;
-        params.nominal_role_id = nominalRoleId;
+      if (companyId !== null) {
+        params.company_id = companyId;
+      }
+      if (rankId !== null) {
+        params.rank_id = rankId;
+      }
+      if (platoonId !== null) {
+        params.platoon_id = platoonId;
+      }
+      if (tradesmanId !== null) {
+        params.tradesman_id = tradesmanId;
       }
 
       if (educationType) {
@@ -232,14 +257,11 @@ export default function QuickFiltersPage() {
     }
   };
 
-  const handleNominalRoleTypeChange = (type: string) => {
-    setNominalRoleType(type);
-    setNominalRoleId(null); // Reset ID when type changes
-  };
-
   const handleClearFilters = () => {
-    setNominalRoleType("");
-    setNominalRoleId(null);
+    setCompanyId(null);
+    setRankId(null);
+    setPlatoonId(null);
+    setTradesmanId(null);
     setEducationType("");
     setSportsEventName("");
     setBloodGroupFilter("");
@@ -309,30 +331,11 @@ export default function QuickFiltersPage() {
   };
 
   const handleApplyFilters = () => {
-    if (nominalRoleType && !nominalRoleId) {
-      setError("Please select a " + nominalRoleType + " to filter");
-      return;
-    }
     setPage(1);
     fetchFilteredPersonnel();
   };
 
-  const getNominalRoleOptions = () => {
-    switch (nominalRoleType) {
-      case "company":
-        return companies.map(c => ({ id: c.id, name: c.company_name }));
-      case "rank":
-        return ranks.map(r => ({ id: r.id, name: r.name }));
-      case "platoon":
-        return platoons.map(p => ({ id: p.id, name: p.platoon_name }));
-      case "tradesman":
-        return tradesmen.map(t => ({ id: t.id, name: t.trade_name }));
-      default:
-        return [];
-    }
-  };
-
-  const hasActiveFilters = (nominalRoleType && nominalRoleId) || educationType || sportsEventName || bloodGroupFilter || statusFilter;
+  const hasActiveFilters = (companyId !== null) || (rankId !== null) || (platoonId !== null) || (tradesmanId !== null) || educationType || sportsEventName || bloodGroupFilter || statusFilter;
 
   const handleDownloadCSV = async (downloadAll = false) => {
     let dataToExport = personnel;
@@ -343,10 +346,10 @@ export default function QuickFiltersPage() {
           page: 1,
           limit: Math.min(total, 10000)
         };
-        if (nominalRoleType && nominalRoleId) {
-          params.nominal_role_type = nominalRoleType;
-          params.nominal_role_id = nominalRoleId;
-        }
+        if (companyId !== null) params.company_id = companyId;
+        if (rankId !== null) params.rank_id = rankId;
+        if (platoonId !== null) params.platoon_id = platoonId;
+        if (tradesmanId !== null) params.tradesman_id = tradesmanId;
         if (educationType) params.education_type = educationType;
         if (sportsEventName) params.sports_event_name = sportsEventName;
         if (bloodGroupFilter) params.blood_group = bloodGroupFilter;
@@ -366,7 +369,7 @@ export default function QuickFiltersPage() {
       }
     }
     if (dataToExport.length === 0) return;
-    const headers = ["S.No", "Army No", "Name", "Rank", "Company", "Platoon", "Trades Name", "Sports Name", "Education Category", "Blood Group", "Status", "Formation"];
+    const headers = ["S.No", "Army No", "Name", "Rank", "Company", "Platoon", "Trades Name", "Sports Name", "Civilian Education", "Military Education", "Blood Group", "Status", "Formation"];
     const rows = dataToExport.map((p, idx) => [
       idx + 1,
       p.army_no,
@@ -376,7 +379,8 @@ export default function QuickFiltersPage() {
       p.platoon || "",
       p.trades_name || "",
       p.sports_name || "",
-      p.education_category || "",
+      p.education_civilian || "",
+      p.education_military || "",
       p.blood_group || "",
       p.dynamic_status || "",
       p.formation_category || "",
@@ -435,38 +439,57 @@ export default function QuickFiltersPage() {
                     {expandedSections.nominalRole && (
                       <div className="p-4 space-y-3 border-t border-white/20">
                         <div>
-                          <label className="block text-sm font-medium text-gray-200 mb-2">Type</label>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">Company</label>
                           <select
-                            value={nominalRoleType}
-                            onChange={(e) => handleNominalRoleTypeChange(e.target.value)}
+                            value={companyId ?? ""}
+                            onChange={(e) => setCompanyId(e.target.value ? parseInt(e.target.value) : null)}
                             className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
                           >
-                            <option value="">Select Type</option>
-                            <option value="company">Company</option>
-                            <option value="rank">Rank</option>
-                            <option value="platoon">Platoon</option>
-                            <option value="tradesman">Tradesman</option>
+                            <option value="">All Companies</option>
+                            {companies.map((c) => (
+                              <option key={c.id} value={c.id}>{c.company_name}</option>
+                            ))}
                           </select>
                         </div>
-                        {nominalRoleType && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-200 mb-2">
-                              {nominalRoleType.charAt(0).toUpperCase() + nominalRoleType.slice(1)}
-                            </label>
-                            <select
-                              value={nominalRoleId || ""}
-                              onChange={(e) => setNominalRoleId(e.target.value ? parseInt(e.target.value) : null)}
-                              className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                            >
-                              <option value="">Select {nominalRoleType}</option>
-                              {getNominalRoleOptions().map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">Rank</label>
+                          <select
+                            value={rankId ?? ""}
+                            onChange={(e) => setRankId(e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          >
+                            <option value="">All Ranks</option>
+                            {ranks.map((r) => (
+                              <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">Platoon</label>
+                          <select
+                            value={platoonId ?? ""}
+                            onChange={(e) => setPlatoonId(e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          >
+                            <option value="">All Platoons</option>
+                            {platoons.map((p) => (
+                              <option key={p.id} value={p.id}>{p.platoon_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">Tradesman</label>
+                          <select
+                            value={tradesmanId ?? ""}
+                            onChange={(e) => setTradesmanId(e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                          >
+                            <option value="">All Tradesmen</option>
+                            {tradesmen.map((t) => (
+                              <option key={t.id} value={t.id}>{t.trade_name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -493,10 +516,13 @@ export default function QuickFiltersPage() {
                           className="w-full px-4 py-2.5 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
                         >
                           <option value="">All Education</option>
-                          {educationOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
+                          <option disabled className="bg-gray-800 text-gray-400 font-semibold">── Civilian ──</option>
+                          {educationCivilianOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                          <option disabled className="bg-gray-800 text-gray-400 font-semibold">── Military ──</option>
+                          {educationMilitaryOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
                         </select>
                       </div>
@@ -563,21 +589,24 @@ export default function QuickFiltersPage() {
                     )}
                   </div>
 
-                  {/* Status Filter (ERE, Course, Leave, Out Station) */}
+                  {/* Status & Date - separate fields in single box */}
                   <div className="border border-white/20 rounded-xl overflow-hidden">
                     <button
-                      onClick={() => setExpandedSections({ ...expandedSections, status: !expandedSections.status })}
+                      onClick={() => setExpandedSections({ ...expandedSections, statusDate: !expandedSections.statusDate })}
                       className="w-full px-4 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
                     >
-                      <span className="font-semibold">Status</span>
-                      {expandedSections.status ? (
+                      <span className="font-semibold flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Status & Date
+                      </span>
+                      {expandedSections.statusDate ? (
                         <ChevronUp className="w-5 h-5" />
                       ) : (
                         <ChevronDown className="w-5 h-5" />
                       )}
                     </button>
-                    {expandedSections.status && (
-                      <div className="p-4 border-t border-white/20 space-y-3">
+                    {expandedSections.statusDate && (
+                      <div className="p-4 border-t border-white/20 space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-200 mb-2">Status</label>
                           <select
@@ -609,28 +638,6 @@ export default function QuickFiltersPage() {
                             </select>
                           </div>
                         )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Date Filter - applies when filtering by status */}
-                  <div className="border border-white/20 rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedSections({ ...expandedSections, date: !expandedSections.date })}
-                      className="w-full px-4 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <span className="font-semibold flex items-center gap-2">
-                        <Calendar className="w-5 h-5" />
-                        Date
-                      </span>
-                      {expandedSections.date ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </button>
-                    {expandedSections.date && (
-                      <div className="p-4 border-t border-white/20 space-y-3">
                         <div>
                           <label className="block text-sm font-medium text-gray-200 mb-2">Filter Date (for status)</label>
                           <input
@@ -680,7 +687,7 @@ export default function QuickFiltersPage() {
                   <div className="pt-6 border-t border-white/20 space-y-3">
                     <button
                       onClick={handleApplyFilters}
-                      disabled={loading || !hasActiveFilters || (nominalRoleType && !nominalRoleId)}
+                      disabled={loading || !hasActiveFilters}
                       className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
                     >
                       <Filter className="w-5 h-5" />
@@ -854,8 +861,8 @@ export default function QuickFiltersPage() {
                 {!loading && !error && personnel.length === 0 && (
                   <div className="p-12 text-center">
                     <Filter className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg mb-2">No results found</p>
-                    <p className="text-gray-500 text-sm">Try adjusting your filters</p>
+                    <p className="text-gray-400 text-lg mb-2">No data found</p>
+                    <p className="text-gray-500 text-sm">{hasActiveFilters ? "No personnel match your filters" : "Apply filters to see results"}</p>
                   </div>
                 )}
 
@@ -871,18 +878,17 @@ export default function QuickFiltersPage() {
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Name</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Rank</th>
                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Company</th>
-                            {(nominalRoleType === "platoon" || personnel.some(p => p.platoon)) && (
+                            {(platoonId !== null || personnel.some(p => p.platoon)) && (
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Platoon</th>
                             )}
-                            {(nominalRoleType === "tradesman" || personnel.some(p => p.trades_name)) && (
+                            {(tradesmanId !== null || personnel.some(p => p.trades_name)) && (
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Trades Name</th>
                             )}
                             {(sportsEventName || personnel.some(p => p.sports_name)) && (
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Sports Name</th>
                             )}
-                            {(educationType || personnel.some(p => p.education_category)) && (
-                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Education Category</th>
-                            )}
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Civilian Education</th>
+                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Military Education</th>
                             {(bloodGroupFilter || personnel.some(p => p.blood_group)) && (
                               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300  tracking-wider">Blood Group</th>
                             )}
@@ -900,18 +906,17 @@ export default function QuickFiltersPage() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm">{person.name}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">{person.rank}</td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">{person.company || "-"}</td>
-                              {(nominalRoleType === "platoon" || personnel.some(p => p.platoon)) && (
+                              {(platoonId !== null || personnel.some(p => p.platoon)) && (
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">{person.platoon || "-"}</td>
                               )}
-                              {(nominalRoleType === "tradesman" || personnel.some(p => p.trades_name)) && (
+                              {(tradesmanId !== null || personnel.some(p => p.trades_name)) && (
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">{person.trades_name || "-"}</td>
                               )}
                               {(sportsEventName || personnel.some(p => p.sports_name)) && (
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">{person.sports_name || "-"}</td>
                               )}
-                              {(educationType || personnel.some(p => p.education_category)) && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">{person.education_category || "-"}</td>
-                              )}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">{person.education_civilian || "-"}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">{person.education_military || "-"}</td>
                               {(bloodGroupFilter || personnel.some(p => p.blood_group)) && (
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">{person.blood_group || "-"}</td>
                               )}

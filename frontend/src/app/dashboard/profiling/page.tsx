@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search, Printer } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { personnelService, leaveService } from "@/lib/api";
+import { personnelService, personnelJCOService, leaveService } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { config } from "@/config/env";
 
@@ -256,24 +256,33 @@ export default function GlobalProfilingPage() {
     try {
       setLoading(true);
 
-      // Find personnel by army number using the existing search API
-      const searchRes = await personnelService.getAllPersonnel(
+      // Find personnel by army number - search both OR (personnel) and JCO categories
+      let list: any[] = [];
+      let searchRes = await personnelService.getAllPersonnel(
         1,
         10,
         trimmedArmyNo
       );
 
-      if (searchRes.status !== "success" || !searchRes.data) {
-        setError("Failed to search personnel.");
-        return;
+      if (searchRes.status === "success" && searchRes.data) {
+        const searchData = searchRes.data as { personnel: any[] };
+        list = searchData.personnel || [];
       }
 
-      const searchData = searchRes.data as {
-        personnel: any[];
-      };
+      // If not found in OR personnel, search in JCO
+      if (list.length === 0) {
+        const jcoRes = await personnelJCOService.getAllPersonnel(
+          1,
+          10,
+          trimmedArmyNo
+        );
+        if (jcoRes.status === "success" && jcoRes.data) {
+          const jcoData = jcoRes.data as { personnel: any[] };
+          list = jcoData.personnel || [];
+        }
+      }
 
-      const list = searchData.personnel || [];
-      if (!Array.isArray(list) || list.length === 0) {
+      if (list.length === 0) {
         setError("No personnel found for the given Army Number.");
         return;
       }
@@ -286,6 +295,7 @@ export default function GlobalProfilingPage() {
 
       const personId = match.id as number;
 
+      // Use personnelService for profile/details - works for both OR and JCO (same personnel_profile table)
       const profileRes = await personnelService.getPersonnelById(personId);
       if (profileRes.status !== "success" || !profileRes.data) {
         setError("Failed to load personnel details.");

@@ -325,7 +325,7 @@ export default function CoursesPage() {
                   ) : (
                     filteredCourses.map((course,index) => (
                       <tr key={course.id} className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base"># {(page - 1) * limit + index + 1}</td>
+                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base"> {(page - 1) * limit + index + 1}</td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-medium text-sm lg:text-base">{course.course_title}</td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base max-w-xs">
                           {course.remarks ? (

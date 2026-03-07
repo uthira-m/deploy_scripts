@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,8 +9,10 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
-import { officersService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
+import { officersService, personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
+import { validatePersonnelDob } from "@/lib/utils";
 import { paginationConfig } from "@/config/pagination";
+import { MoreVertical, Eye, Trash2, KeyRound } from "lucide-react";
 
 interface Personnel {
   id: number;
@@ -102,13 +105,19 @@ export default function OfficersPage() {
     isOpen: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    type?: 'danger' | 'warning' | 'info';
     onConfirm: () => void;
   }>({
     isOpen: false,
     title: "",
     message: "",
+    confirmText: "Yes, Delete",
+    type: "danger",
     onConfirm: () => {}
   });
+  const [openOverflowId, setOpenOverflowId] = useState<number | null>(null);
+  const [actionsMenuPosition, setActionsMenuPosition] = useState<{ top: number; right: number } | null>(null);
 
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
@@ -345,7 +354,7 @@ export default function OfficersPage() {
   });
   const router = useRouter();
   const { user } = useAuth();
-  const { canModify } = usePermissions();
+  const { canModify, isAdmin } = usePermissions();
 
   // Check if any filters are applied
   const hasActiveFilters = () => {
@@ -358,10 +367,16 @@ export default function OfficersPage() {
   
   // Dynamically get officer rank names from fetched data
   const rankFilterOptions = useMemo(() => {
+    const OFFICER_RANK_ORDER: Record<string, number> = { 'Colonel': 1, 'Lieutenant Colonel': 2, 'Major': 3, 'Captain': 4, 'Lieutenant': 5 };
+    const rankOrder = (r: Rank) => {
+      const o = (r as any).order ?? (r as any).hierarchy_order;
+      if (o != null && o > 0) return o;
+      return OFFICER_RANK_ORDER[r.name?.trim() ?? ''] ?? 999;
+    };
     return ranks
       .filter(rank => rank.is_active !== false) // Only include active ranks
-      .map(rank => rank.name)
-      .sort();
+      .sort((a, b) => rankOrder(a) - rankOrder(b))
+      .map(rank => rank.name);
   }, [ranks]);
 
   // Use dynamic_status directly from API response - no need for separate course API calls
@@ -503,6 +518,15 @@ export default function OfficersPage() {
       return;
     }
 
+    if (formData.dob) {
+      const dobError = validatePersonnelDob(formData.dob);
+      if (dobError) {
+        setError(dobError);
+        setFormLoading(false);
+        return;
+      }
+    }
+
     try {
       const cleanedFormData = {
         ...formData,
@@ -542,13 +566,16 @@ export default function OfficersPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
+    setOpenOverflowId(null);
     setConfirmModal({
       isOpen: true,
       title: "Delete Officer",
       message: "Are you sure you want to delete this officer? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      type: "danger",
       onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false });
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         try {
           const response = await officersService.deleteOfficer(id);
           if (response.status === 'success') {
@@ -558,6 +585,31 @@ export default function OfficersPage() {
           }
         } catch (err: any) {
           setError(err.message || "Failed to delete officer");
+        }
+      }
+    });
+  };
+
+  const handleResetPassword = (person: Personnel) => {
+    setOpenOverflowId(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Reset Password",
+      message: `Reset password for ${person.name} (${person.army_no}) to their date of birth? They will need to use DOB (DDMMYYYY) to login.`,
+      confirmText: "Reset Password",
+      type: "warning",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const response = await personnelService.resetPassword(person.id);
+          if (response.status === 'success') {
+            setError(null);
+            await fetchOfficers();
+          } else {
+            setError(response.message || "Failed to reset password");
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to reset password");
         }
       }
     });
@@ -625,11 +677,11 @@ export default function OfficersPage() {
           isOpen={confirmModal.isOpen}
           title={confirmModal.title}
           message={confirmModal.message}
-          confirmText="Yes, Delete"
+          confirmText={confirmModal.confirmText ?? "Confirm"}
           cancelText="Cancel"
-          type="danger"
+          type={confirmModal.type ?? "warning"}
           onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
         />
 
         <div className="mb-6 lg:mb-8">
@@ -763,7 +815,15 @@ export default function OfficersPage() {
                   {filteredPersonnel.map((person, index) => (
                     <tr key={person.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-4 py-3 text-sm text-gray-300">{startIndex + index + 1}</td>
-                      <td className="px-4 py-3 text-sm text-gray-300">{person.army_no || '-'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <Link
+                          href={`/dashboard/personnel/${person.id}?from=officers`}
+                          className="text-blue-400 hover:text-blue-300 font-mono transition-colors cursor-pointer"
+                          title="View Details"
+                        >
+                          {person.army_no || '-'}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm text-white">{person.name || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{person.rankInfo?.name || person.rank || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-300">{formatServiceDuration(person.doe)}</td>
@@ -795,39 +855,23 @@ export default function OfficersPage() {
                         {person.current_course_name || '--'}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/dashboard/personnel/${person.id}?from=officers`}
-                            className="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-                            title="View Details"
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              if (openOverflowId === person.id) {
+                                setOpenOverflowId(null);
+                                setActionsMenuPosition(null);
+                              } else {
+                                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setActionsMenuPosition({ top: rect.top, right: window.innerWidth - rect.right });
+                                setOpenOverflowId(person.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            title="Actions"
                           >
-                            <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </Link>
-                          {canModify && (
-                            <>
-                              {/* <button
-                                onClick={() => handleEdit(person)}
-                                className="text-yellow-400 hover:text-yellow-300 transition-colors cursor-pointer"
-                                title="Edit"
-                              >
-                                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button> */}
-                              <button
-                                onClick={() => handleDelete(person.id)}
-                                className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </>
-                          )}
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -837,6 +881,62 @@ export default function OfficersPage() {
             </div>
           </div>
         )}
+
+        {/* Actions dropdown - rendered via portal to escape table overflow */}
+        {openOverflowId && actionsMenuPosition && typeof document !== "undefined" && (() => {
+          const person = filteredPersonnel.find((p) => p.id === openOverflowId);
+          if (!person) return null;
+          const closeMenu = () => {
+            setOpenOverflowId(null);
+            setActionsMenuPosition(null);
+          };
+          return createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[9998]"
+                onClick={closeMenu}
+                aria-hidden="true"
+              />
+              <div
+                className="fixed z-[9999] py-1 min-w-[160px] rounded-lg bg-slate-800 border border-white/10 shadow-xl"
+                style={{
+                  bottom: `calc(100vh - ${actionsMenuPosition.top}px + 4px)`,
+                  right: actionsMenuPosition.right,
+                }}
+              >
+                <Link
+                  href={`/dashboard/personnel/${person.id}?from=officers`}
+                  onClick={closeMenu}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View
+                </Link>
+                {canModify && (
+                  <>
+                    {isAdmin && (
+                      <button
+                        onClick={() => { handleResetPassword(person); closeMenu(); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        Reset Password
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { handleDelete(person.id); closeMenu(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-400 hover:bg-white/10 hover:text-rose-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </>,
+            document.body
+          );
+        })()}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -974,7 +1074,7 @@ export default function OfficersPage() {
                   </div>
                   <div>
                     <DateOfEntryInput
-                      label="Date of Enlistment"
+                      label="Date of Entry"
                       value={formData.doe}
                       onChange={(value) => setFormData({ ...formData, doe: value })}
                       className="px-4 py-2 bg-gray-700/50 border-gray-600"
@@ -1168,12 +1268,13 @@ export default function OfficersPage() {
                             onChange={(value) => setTempFilters({...tempFilters, dob: value})}
                             label="Date of Birth"
                             minAge={0}
+                            maxAge={100}
                             className="px-3 py-2 rounded-lg bg-gray-700/50 border-gray-600"
                           />
                         </div>
                         <div>
                           <DateOfEntryInput
-                            label="Date of Enlistment"
+                            label="Date of Entry"
                             value={tempFilters.doe}
                             onChange={(value) => setTempFilters({...tempFilters, doe: value})}
                             className="px-3 py-2 rounded-lg bg-gray-700/50 border-gray-600"

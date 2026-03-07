@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,8 +10,10 @@ import ConfirmModal from "@/components/ConfirmModal";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
-import { calculateServiceDuration } from "@/lib/utils";
+import { calculateServiceDuration, validatePersonnelDob } from "@/lib/utils";
 import { paginationConfig } from "@/config/pagination";
+import { Upload, FileSpreadsheet, FileCheck, X, Clock, AlertCircle, MoreVertical, Eye, Trash2, KeyRound } from "lucide-react";
+import * as XLSX from "xlsx";
 
 
 interface Personnel {
@@ -150,6 +153,16 @@ export default function PersonnelPage() {
   });
   const [phoneError, setPhoneError] = useState("");
   const [editingPersonnel, setEditingPersonnel] = useState<Personnel | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    validCount: number;
+    errorCount: number;
+    errors: { row: number; armyNo: string; field: string; error: string }[];
+    validated: boolean;
+  } | null>(null);
+  const [validating, setValidating] = useState(false);
 
   // Phone validation function
   const validatePhone = (phone: string) => {
@@ -402,13 +415,19 @@ export default function PersonnelPage() {
     isOpen: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    type?: 'danger' | 'warning' | 'info';
     onConfirm: () => void;
   }>({
     isOpen: false,
     title: "",
     message: "",
+    confirmText: "Yes, Delete",
+    type: "danger",
     onConfirm: () => {}
   });
+  const [openOverflowId, setOpenOverflowId] = useState<number | null>(null);
+  const [actionsMenuPosition, setActionsMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [rankFilter, setRankFilter] = useState("");
   const [bloodGroupFilter, setBloodGroupFilter] = useState("");
@@ -466,9 +485,16 @@ export default function PersonnelPage() {
       }
     });
     
-    // Sort rank options alphabetically
-    orRankOptions.sort();
-    orRanks.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    // Sort rank options by hierarchy order (highest first: Havaldar, Lance Havaldar, Naik, Lance Naik, Rifleman, Agniveer)
+    const OR_RANK_ORDER: Record<string, number> = { 'Havaldar': 1, 'Lance Havaldar': 2, 'Naik': 3, 'Lance Naik': 4, 'Rifleman': 5, 'Agniveer': 6 };
+    const rankOrder = (r: Rank) => {
+      const o = (r as any).order ?? r.hierarchy_order;
+      if (o != null && o > 0) return o;
+      return OR_RANK_ORDER[r.name?.trim() ?? ''] ?? 999;
+    };
+    orRanks.sort((a, b) => rankOrder(a) - rankOrder(b));
+    orRankOptions.length = 0;
+    orRanks.forEach(r => orRankOptions.push(r.name));
     
     return {
       jcoRankNames: jcoNames,
@@ -640,6 +666,16 @@ export default function PersonnelPage() {
       return;
     }
 
+    // Validate DOB (age 18-50) when provided
+    if (formData.dob) {
+      const dobError = validatePersonnelDob(formData.dob);
+      if (dobError) {
+        setError(dobError);
+        setFormLoading(false);
+        return;
+      }
+    }
+
     try {
       // Clean the form data - send rank_id (like officers/JCO), convert empty strings to null for optional fields
       const cleanedFormData = {
@@ -680,29 +716,289 @@ export default function PersonnelPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
+    setOpenOverflowId(null);
     setConfirmModal({
       isOpen: true,
       title: "Delete Personnel",
       message: "Are you sure you want to delete this personnel? This action cannot be undone.",
+      confirmText: "Yes, Delete",
+      type: "danger",
       onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false });
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         try {
           const response = await personnelService.deletePersonnel(id);
           if (response.status === 'success') {
-            // Refresh personnel list
             await fetchPersonnel();
           } else {
             setError(response.message || "Failed to delete personnel");
           }
         } catch (err: any) {
-          
           setError(err.message || "Failed to delete personnel");
         }
       }
     });
   };
 
+  const handleResetPassword = (person: Personnel) => {
+    setOpenOverflowId(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Reset Password",
+      message: `Reset password for ${person.name} (${person.army_no}) to their date of birth? They will need to use DOB (DDMMYYYY) to login.`,
+      confirmText: "Reset Password",
+      type: "warning",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const response = await personnelService.resetPassword(person.id);
+          if (response.status === 'success') {
+            setError(null);
+            await fetchPersonnel();
+          } else {
+            setError(response.message || "Failed to reset password");
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to reset password");
+        }
+      }
+    });
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await personnelService.downloadPersonnelTemplate();
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "personnel_upload_template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      setError(err.message || "Failed to download template");
+    }
+  };
+
+  const COL_ALIASES: Record<string, string[]> = {
+    army_no: ["army no", "army_no", "armyno"],
+    name: ["full name", "full_name", "name"],
+    rank: ["rank"],
+    dob: ["date of birth", "date_of_birth", "dob"],
+    doe: ["date of entry", "date_of_entry", "doe"],
+    phone: ["phone number", "phone_number", "phone"],
+    company: ["company"],
+  };
+
+  const parseDate = (val: string | number | Date | null | undefined): Date | null => {
+    console.log('val', val);
+    if (val == null) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+    if (typeof val === "number") {
+      if (val > 0 && val < 1000000) {
+        const date = new Date((val - 25569) * 86400 * 1000);
+        return isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    }
+    const s = String(val).trim();
+    if (!s) return null;
+    // Excel serial as string (e.g. "34827" for 15-May-1995)
+    const num = parseFloat(s);
+    if (!isNaN(num) && num >= 1 && num <= 2958465 && /^\d+$/.test(s)) {
+      const date = new Date((num - 25569) * 86400 * 1000);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    // YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, YYYY/MM/DD
+    const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (m1) return new Date(parseInt(m1[1], 10), parseInt(m1[2], 10) - 1, parseInt(m1[3], 10));
+    const m2 = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+    if (m2) return new Date(parseInt(m2[3], 10), parseInt(m2[2], 10) - 1, parseInt(m2[1], 10));
+    const m3 = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+    if (m3) return new Date(parseInt(m3[3], 10), parseInt(m3[2], 10) - 1, parseInt(m3[1], 10));
+    const m4 = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(s);
+    if (m4) return new Date(parseInt(m4[1], 10), parseInt(m4[2], 10) - 1, parseInt(m4[3], 10));
+    return null;
+  };
+
+  const validateBulkUploadFile = (file: File): Promise<typeof validationResult> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          if (!rows || rows.length < 2) {
+            resolve({ validCount: 0, errorCount: 0, errors: [{ row: 0, armyNo: "", field: "file", error: "File has no data rows" }], validated: true });
+            return;
+          }
+          const header = rows[0].map((h) => String(h || "").trim().toLowerCase());
+          const headerMap: Record<string, number> = {};
+          for (let colIdx = 0; colIdx < header.length; colIdx++) {
+            const cell = header[colIdx];
+            for (const [field, aliases] of Object.entries(COL_ALIASES)) {
+              if (aliases.some((a) => a === cell)) {
+                headerMap[field] = colIdx;
+                break;
+              }
+            }
+          }
+          const requiredFields = ["army_no", "name", "rank", "dob", "doe", "phone", "company"];
+          const missing = requiredFields.filter((f) => headerMap[f] == null);
+          if (missing.length > 0) {
+            const labels = missing.map((f) => (f === "army_no" ? "Army No" : f === "dob" ? "Date Of Birth" : f === "doe" ? "Date Of Entry" : f.charAt(0).toUpperCase() + f.slice(1).replace(/_/g, " ")));
+            resolve({ validCount: 0, errorCount: 0, errors: [{ row: 1, armyNo: "", field: "header", error: `Missing required columns: ${labels.join(", ")}` }], validated: true });
+            return;
+          }
+          const errors: { row: number; armyNo: string; field: string; error: string }[] = [];
+          const seenArmyNos = new Set<string>();
+          let validCount = 0;
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i] || [];
+            const getVal = (f: string) => {
+              const idx = headerMap[f];
+              if (idx == null || idx >= row.length) return "";
+              const v = row[idx];
+              return v != null ? String(v).trim() : "";
+            };
+            const getRawVal = (f: string) => {
+              const idx = headerMap[f];
+              if (idx == null || idx >= row.length) return null;
+              return row[idx];
+            };
+            const armyNo = getVal("army_no");
+            const name = getVal("name");
+            const rankStr = getVal("rank");
+            const dobRaw = getRawVal("dob");
+            const doeRaw = getRawVal("doe");
+            const phoneStr = getVal("phone");
+            const companyStr = getVal("company");
+            const rowNum = i + 2;
+            if (!armyNo) continue; // Skip empty rows - only validate when Army No is present
+            if (seenArmyNos.has(armyNo)) {
+              errors.push({ row: rowNum, armyNo, field: "army_no", error: "Duplicate Army No in file - entry skipped" });
+              continue;
+            }
+            seenArmyNos.add(armyNo); // Track for duplicate detection (add on first sight)
+            if (!name) {
+              errors.push({ row: rowNum, armyNo, field: "name", error: "Full Name is required" });
+              continue;
+            }
+            if (!rankStr) {
+              errors.push({ row: rowNum, armyNo, field: "rank", error: "Rank is required" });
+              continue;
+            }
+            if (dobRaw == null || (typeof dobRaw === "string" && !dobRaw.trim())) {
+              errors.push({ row: rowNum, armyNo, field: "dob", error: "Date Of Birth is required" });
+              continue;
+            }
+            const dob = parseDate(dobRaw);
+            if (!dob) {
+              errors.push({ row: rowNum, armyNo, field: "dob", error: "Invalid Date Of Birth format (use DD-MM-YYYY or YYYY-MM-DD)" });
+              continue;
+            }
+            if (doeRaw == null || (typeof doeRaw === "string" && !doeRaw.trim())) {
+              errors.push({ row: rowNum, armyNo, field: "doe", error: "Date Of Entry is required" });
+              continue;
+            }
+            const doe = parseDate(doeRaw);
+            if (!doe) {
+              errors.push({ row: rowNum, armyNo, field: "doe", error: "Invalid Date Of Entry format (use DD-MM-YYYY or YYYY-MM-DD)" });
+              continue;
+            }
+            if (doe > new Date()) {
+              errors.push({ row: rowNum, armyNo, field: "doe", error: "Date Of Entry cannot be in the future" });
+              continue;
+            }
+            if (!phoneStr) {
+              errors.push({ row: rowNum, armyNo, field: "phone", error: "Phone number is required" });
+              continue;
+            }
+            const phoneDigits = phoneStr.replace(/\D/g, "");
+            if (phoneDigits.length !== 10) {
+              errors.push({ row: rowNum, armyNo, field: "phone", error: "Phone number must be exactly 10 digits" });
+              continue;
+            }
+            if (!companyStr) {
+              errors.push({ row: rowNum, armyNo, field: "company", error: "Company is required" });
+              continue;
+            }
+            validCount++;
+          }
+          resolve({ validCount, errorCount: errors.length, errors, validated: true });
+        } catch (err) {
+          resolve({ validCount: 0, errorCount: 0, errors: [{ row: 0, armyNo: "", field: "file", error: "Failed to parse Excel file" }], validated: true });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleFileSelect = async (file: File | null) => {
+    setUploadFile(file);
+    setValidationResult(null);
+    if (!file) return;
+    setValidating(true);
+    setError(null);
+    const result = await validateBulkUploadFile(file);
+    setValidationResult(result);
+    setValidating(false);
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) {
+      setError("Please select a file to upload");
+      return;
+    }
+    const validExtensions = [".xlsx", ".xls"];
+    const fileExtension = uploadFile.name.substring(uploadFile.name.lastIndexOf(".")).toLowerCase();
+    if (!validExtensions.includes(fileExtension)) {
+      setError("Please upload a valid Excel file (.xlsx or .xls)");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const response: any = await personnelService.bulkUploadPersonnel(uploadFile);
+      if (response.status === "success" && response.data) {
+        const { total, successful, errors, details, summary } = response.data;
+        let message = `Upload completed! ${successful} out of ${total} records processed successfully.`;
+        if (errors > 0) {
+          message += ` ${errors} record(s) were skipped or failed.`;
+          if (details?.errors && details.errors.length > 0) {
+            const errorItems = details.errors.map((err: any) => {
+              const row = err.row || "?";
+              const armyNo = err.army_no || "N/A";
+              const errMsg = err.error || err.message || String(err);
+              return `Row ${row} (Army No: ${armyNo}): ${errMsg}`;
+            });
+            const errorMessage = errorItems.slice(0, 20).join("\n") + (errorItems.length > 20 ? `\n... and ${errorItems.length - 20} more` : "");
+            setError(`Upload completed with ${errors} errors:\n\n${errorMessage}`);
+          }
+        }
+        if (summary?.success_rate) {
+          message += ` Success rate: ${summary.success_rate}`;
+        }
+        setShowUploadModal(false);
+        setUploadFile(null);
+        setValidationResult(null);
+        await fetchPersonnel();
+      } else {
+        setError(response.message || "Failed to upload file");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || "Failed to upload file");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Filter personnel to exclude JCO (backend should already do this, but adding as safety)
   const filteredPersonnel = personnel.filter(person => {
@@ -730,11 +1026,11 @@ export default function PersonnelPage() {
           isOpen={confirmModal.isOpen}
           title={confirmModal.title}
           message={confirmModal.message}
-          confirmText="Yes, Delete"
+          confirmText={confirmModal.confirmText ?? "Confirm"}
           cancelText="Cancel"
-          type="danger"
+          type={confirmModal.type ?? "warning"}
           onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
         />
 
         {/* Header */}
@@ -750,9 +1046,9 @@ export default function PersonnelPage() {
           </p>
         </div>
 
-        {/* Add Personnel Button - For Admin and Commander */}
+        {/* Add Personnel and Bulk Upload Buttons - For Admin */}
         {canModify && user?.role === 'admin' && (
-          <div className="mb-6 lg:mb-8">
+          <div className="mb-6 lg:mb-8 flex flex-wrap gap-3">
             <button
               onClick={() => setShowAddForm(true)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
@@ -760,7 +1056,14 @@ export default function PersonnelPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-             { 'Add Personnel'}
+              Add Personnel
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Bulk Upload (Excel)
             </button>
           </div>
         )}
@@ -921,7 +1224,15 @@ export default function PersonnelPage() {
                     filteredPersonnel.map((person,index) => (
                       <tr key={person.id} className="hover:bg-white/5 transition-colors">
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base">{(page - 1) * limit + index + 1}</td>
-                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base">{person.army_no || '--'}</td>
+                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                          <Link
+                            href={`/dashboard/personnel/${person.id}`}
+                            className="text-blue-400 hover:text-blue-300 font-mono text-sm lg:text-base transition-colors cursor-pointer"
+                            title="View Details"
+                          >
+                            {person.army_no || '--'}
+                          </Link>
+                        </td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-medium text-sm lg:text-base">{person.name || '--'}</td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">{person.rankInfo?.name || person.rank || '--'}</td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">{calculateServiceDuration(person.doe)}</td>
@@ -953,28 +1264,23 @@ export default function PersonnelPage() {
                           {person.current_course_name || '--'}
                         </td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4">
-                          <div className="flex space-x-2">
-                            <Link 
-                              href={`/dashboard/personnel/${person.id}`}
-                              className="text-emerald-400 hover:text-emerald-300 transition-colors" 
-                              title="View Details"
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                if (openOverflowId === person.id) {
+                                  setOpenOverflowId(null);
+                                  setActionsMenuPosition(null);
+                                } else {
+                                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                  setActionsMenuPosition({ top: rect.top, right: window.innerWidth - rect.right });
+                                  setOpenOverflowId(person.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                              title="Actions"
                             >
-                              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </Link>
-                            {canModify && (
-                              <button
-                                onClick={() => handleDelete(person.id)}
-                                className="text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" 
-                                title="Delete"
-                              >
-                                <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            )}
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -985,6 +1291,62 @@ export default function PersonnelPage() {
             </div>
           )}
         </div>
+
+        {/* Actions dropdown - rendered via portal to escape table overflow */}
+        {openOverflowId && actionsMenuPosition && typeof document !== "undefined" && (() => {
+          const person = filteredPersonnel.find((p) => p.id === openOverflowId);
+          if (!person) return null;
+          const closeMenu = () => {
+            setOpenOverflowId(null);
+            setActionsMenuPosition(null);
+          };
+          return createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[9998]"
+                onClick={closeMenu}
+                aria-hidden="true"
+              />
+              <div
+                className="fixed z-[9999] py-1 min-w-[160px] rounded-lg bg-slate-800 border border-white/10 shadow-xl"
+                style={{
+                  bottom: `calc(100vh - ${actionsMenuPosition.top}px + 4px)`,
+                  right: actionsMenuPosition.right,
+                }}
+              >
+                <Link
+                  href={`/dashboard/personnel/${person.id}`}
+                  onClick={closeMenu}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View
+                </Link>
+                {canModify && (
+                  <>
+                    {isAdmin && (
+                      <button
+                        onClick={() => { handleResetPassword(person); closeMenu(); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        Reset Password
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { handleDelete(person.id); closeMenu(); }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-400 hover:bg-white/10 hover:text-rose-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </>,
+            document.body
+          );
+        })()}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -1112,8 +1474,18 @@ export default function PersonnelPage() {
                     <p className="text-red-400 text-sm mt-1">{phoneError}</p>
                   )}
                 </div>
+                  {/* Column 1 */}
+                <div>
+                  <DateOfBirthInput
+                    value={formData.dob}
+                    onChange={(value) => setFormData({...formData, dob: value})}
+                    label="Date of Birth"
+                    required
+                    className="px-4 py-3 rounded-xl bg-white/10 border-white/20 backdrop-blur-sm"
+                  />
+                </div>
 
-                {/* Column 1 */}
+                {/* Column 2 */}
                 <div>
                   <DateOfEntryInput
                     label="Date of Entry"
@@ -1124,16 +1496,7 @@ export default function PersonnelPage() {
                   />
                 </div>
 
-                {/* Column 2 */}
-                <div>
-                  <DateOfBirthInput
-                    value={formData.dob}
-                    onChange={(value) => setFormData({...formData, dob: value})}
-                    label="Date of Birth"
-                    required
-                    className="px-4 py-3 rounded-xl bg-white/10 border-white/20 backdrop-blur-sm"
-                  />
-                </div>
+              
 
                 {/* Column 1 */}
                 <div className="relative">
@@ -1341,12 +1704,13 @@ export default function PersonnelPage() {
                           onChange={(value) => setTempFilters({...tempFilters, dob: value})}
                           label="Date of Birth"
                           minAge={0}
+                          maxAge={100}
                           className="px-3 py-2 rounded-lg bg-white/10 border-white/20"
                         />
                       </div>
                       <div>
                         <DateOfEntryInput
-                          label="Date of Enlistment"
+                          label="Date of Entry"
                           value={tempFilters.doe}
                           onChange={(value) => setTempFilters({...tempFilters, doe: value})}
                           className="px-3 py-2 rounded-lg bg-white/10 border-white/20"
@@ -2372,6 +2736,163 @@ export default function PersonnelPage() {
           </div>
         </div>
       )}
+
+        {/* Bulk Upload Modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="relative w-full max-w-3xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="border-b border-white/10 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                      <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">Bulk Upload Personnel</h3>
+                      <p className="text-sm text-gray-400 mt-0.5">Import personnel from Excel (.xlsx)</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadFile(null);
+                      setValidationResult(null);
+                    }}
+                    disabled={uploading}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <p className="text-sm text-gray-300 mb-2">
+                    <strong className="text-white">Mandatory:</strong> Army No, Full Name, Rank, Date Of Birth, Date Of Entry, Phone number, Company (dates: DD-MM-YYYY or YYYY-MM-DD)
+                  </p>
+                  <p className="text-sm text-gray-400 mb-2">
+                    <strong className="text-gray-300">Optional:</strong> PAN Card, Aadhar Card, NOK, Account Number, DSP Account, Blood Group, Date of Marriage
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="text-sm text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    Download template (.xlsx)
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      <span>Select Excel File</span>
+                      <span className="text-red-400">*</span>
+                    </div>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        handleFileSelect(file || null);
+                      }}
+                      className="hidden"
+                      id="personnel-file-upload"
+                    />
+                    <label
+                      htmlFor="personnel-file-upload"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-xl bg-white/5 hover:bg-white/10 hover:border-emerald-500/50 transition-all cursor-pointer group"
+                    >
+                      {uploadFile ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="p-3 bg-green-500/20 rounded-full border border-green-500/30">
+                            <FileCheck className="w-6 h-6 text-green-400" />
+                          </div>
+                          <p className="text-sm font-medium text-white">{uploadFile.name}</p>
+                          <p className="text-xs text-gray-400">{(uploadFile.size / 1024).toFixed(2)} KB</p>
+                          {validating && <p className="text-xs text-amber-400">Validating...</p>}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="p-3 bg-emerald-500/20 rounded-full border border-emerald-500/30 group-hover:bg-emerald-500/30 transition-colors">
+                            <Upload className="w-6 h-6 text-emerald-400" />
+                          </div>
+                          <p className="text-sm font-medium text-white">Click to upload or drag and drop</p>
+                          <p className="text-xs text-gray-400">Excel files (.xlsx, .xls) up to 10MB</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+                {validationResult && validationResult.validated && (
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Validation Summary
+                    </h4>
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-emerald-400">{validationResult.validCount} valid record(s)</span>
+                      {validationResult.errorCount > 0 && (
+                        <span className="text-amber-400">{validationResult.errorCount} error(s)</span>
+                      )}
+                    </div>
+                    {validationResult.errors.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto text-xs space-y-1">
+                        {validationResult.errors.slice(0, 10).map((err, idx) => (
+                          <div key={idx} className="text-amber-300/90">
+                            Row {err.row} (Army No: {err.armyNo || "N/A"}): {err.error}
+                          </div>
+                        ))}
+                        {validationResult.errors.length > 10 && (
+                          <div className="text-gray-400">... and {validationResult.errors.length - 10} more</div>
+                        )}
+                      </div>
+                    )}
+                    {validationResult.validCount === 0 && validationResult.errors.length > 0 && (
+                      <p className="text-amber-400 text-sm">Fix errors and re-upload to proceed.</p>
+                    )}
+                    {validationResult.validCount > 0 && (
+                      <p className="text-emerald-400/90 text-sm">Click &quot;Confirm & Upload&quot; to proceed with {validationResult.validCount} valid record(s).</p>
+                    )}
+                  </div>
+                )}
+                <form onSubmit={handleBulkUpload} className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadFile(null);
+                      setValidationResult(null);
+                    }}
+                    disabled={uploading}
+                    className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploading || !uploadFile || validating || (validationResult !== null && (validationResult.validCount === 0 || validationResult.errorCount > 0))}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                  >
+                    {uploading ? (
+                      <>
+                        <Clock className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Confirm & Upload
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
     </ProtectedRoute>
   );
 } 

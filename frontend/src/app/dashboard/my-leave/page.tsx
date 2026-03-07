@@ -211,7 +211,11 @@ export default function MyLeavePage() {
   const formatApplyDate = (dateStr?: string | null): string => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+    if (isNaN(date.getTime())) return '-';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const calculateDays = (startDate: string, endDate: string) => {
@@ -397,7 +401,7 @@ export default function MyLeavePage() {
                       </td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-300">
-                          {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
+                          {formatApplyDate(request.start_date)} - {formatApplyDate(request.end_date)}
                         </div>
                       </td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-center">

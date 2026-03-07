@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { personnelService } from "@/lib/api";
+import { formatDateShort } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useNotification } from "@/contexts/NotificationContext";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
@@ -281,7 +282,7 @@ const MyFamilyDetailsPage = () => {
               {detail.dob && (
                 <div>
                   <span className="text-white/70">Date of Birth: </span>
-                  <span className="font-medium">{new Date(detail.dob).toLocaleDateString()}</span>
+                  <span className="font-medium">{formatDateShort(detail.dob)}</span>
                   {isChild && age !== null && (
                     <span className="text-white/70 ml-2">({age} years)</span>
                   )}
@@ -556,6 +557,7 @@ const MyFamilyDetailsPage = () => {
                         }}
                         label="Date of Birth"
                         minAge={0}
+                        maxAge={100}
                         error={validationErrors.dob}
                         className="px-4 py-3 rounded-lg bg-slate-700 border-slate-600"
                       />

@@ -154,7 +154,7 @@ export default function Sidebar() {
           )}
         </div>
         
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <div className="sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           {!isCollapsed && (
             <div className="mb-2 px-2 text-xs text-gray-400 font-semibold uppercase tracking-wider">Menu</div>
           )}
@@ -168,7 +168,12 @@ export default function Sidebar() {
                 menuLinks = personnelLinks;
               }
 
-              return menuLinks.map(link => {
+              // Admins link: only show if user name is "Super Admin" (check by name, not role)
+              const filteredLinks = menuLinks.filter(link =>
+                link.href === '/dashboard/admins' ? user?.name === 'Super Admin' : true
+              );
+
+              return filteredLinks.map(link => {
                 // More specific matching to avoid conflicts between similar paths
                 const isActive = 
                   // Exact match for dashboard
