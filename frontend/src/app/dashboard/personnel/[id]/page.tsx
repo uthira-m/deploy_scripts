@@ -6829,11 +6829,10 @@ export default function PersonnelDetailsPage() {
                   </div>
                   <div>
                     <label className="block text-gray-200 mb-2 text-sm font-medium">
-                      Planned ERE *
+                      Planned ERE 
                     </label>
                     <input
                       type="text"
-                      required
                       value={ereFormData.planned_ere}
                       onChange={(e) =>
                         setEreFormData({

@@ -4,7 +4,7 @@
  */
 export const devConfig = {
   API_BASE_URL: 'http://localhost:5003/api',
-  API_ENCRYPTION_ENABLED: 'false',
+  API_ENCRYPTION_ENABLED: 'true',
   API_ENCRYPTION_SECRET: 'IndianArmy#@!*123',
   API_ENCRYPTION_ALGORITHM: 'aes-256-cbc',
 

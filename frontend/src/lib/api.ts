@@ -254,12 +254,11 @@ class PersonnelService {
 
   // Get all personnel with pagination, search, and advanced filters
   async getAllPersonnel(page: number = 1, limit: number = 25, search: string = '', filters?: any) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-      ...(filters && { filters: JSON.stringify(filters) })
-    });
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    if (search && search.trim()) params.set('search', search.trim());
+    if (filters && Object.keys(filters).length > 0) params.set('filters', JSON.stringify(filters));
     return this.api.get(`/personnel?${params.toString()}`);
   }
 
@@ -1141,12 +1140,11 @@ class PersonnelJCOService {
 
   // Get all personnel (JCO and OR) with pagination, search, and advanced filters
   async getAllPersonnel(page: number = 1, limit: number = 10, search: string = '', filters?: any) {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-      ...(filters && { filters: JSON.stringify(filters) })
-    });
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    if (search && search.trim()) params.set('search', search.trim());
+    if (filters && Object.keys(filters).length > 0) params.set('filters', JSON.stringify(filters));
     return this.api.get(`/personnel-jco?${params.toString()}`);
   }
 

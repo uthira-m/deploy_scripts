@@ -999,7 +999,7 @@ export default function Dashboard() {
                   {/* Contact Info */}
                   <div className="flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg">
                     <span>📞</span>
-                    <span>For any assistance contact CMPTRCELL</span>
+                    <span>For any assistance contact DOCU CELL</span>
                   </div>
                   
                   {/* Birthdays */}
@@ -1036,7 +1036,7 @@ export default function Dashboard() {
                   
                   <div className="flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg">
                     <span>📞</span>
-                    <span>For any assistance contact CMPTRCELL</span>
+                    <span>For any assistance contact DOCU CELL</span>
                   </div>
                   
                   {!birthdaysLoading && todayBirthdays.length > 0 && (

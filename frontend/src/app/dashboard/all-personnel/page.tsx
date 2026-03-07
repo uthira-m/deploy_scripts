@@ -30,6 +30,7 @@ interface Personnel {
     id: number;
     company_name: string;
   }[];
+  company_personnel?: Array<{ company?: { id: number; company_name: string } }>;
   dynamic_status?: string;
   current_course_name?: string;
   rankInfo?: {
@@ -59,8 +60,10 @@ const formatServiceDuration = (doe?: string) => {
 };
 
 const getCompanyNames = (person: Personnel) => {
-  if (!person.companies || person.companies.length === 0) return "-";
-  return person.companies.map(company => company.company_name).join(", ");
+  // API returns company_personnel with nested company
+  const companies = person.company_personnel?.map((cp) => cp.company).filter((c) => c) || person.companies || [];
+  if (companies.length === 0) return "-";
+  return companies.map((c) => c.company_name).join(", ");
 };
 
 export default function AllPersonnelPage() {
@@ -173,12 +176,14 @@ export default function AllPersonnelPage() {
           ? normalizedStatus.includes('out station')
           : normalizedStatus === normalizedFilter);
 
+      const companyNames = getCompanyNames(person);
       const matchesSearch =
         (person.name && person.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (person.army_no && person.army_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (person.rank && person.rank.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (person.service && person.service.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (person.rankInfo?.name && person.rankInfo.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        (person.rankInfo?.name && person.rankInfo.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (companyNames !== "-" && companyNames.toLowerCase().includes(searchTerm.toLowerCase()));
 
       return matchesSearch && matchesStatusFilter;
     });
@@ -219,7 +224,7 @@ export default function AllPersonnelPage() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search by name, army number, or rank..."
+                placeholder="Search by name, army number, rank, or company..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);

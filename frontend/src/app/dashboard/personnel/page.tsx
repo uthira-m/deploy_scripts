@@ -132,6 +132,7 @@ export default function PersonnelPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -528,7 +529,12 @@ export default function PersonnelPage() {
       setStatusFilter(queryStatus);
     }
   }, [searchParams]);
-  
+
+  // Debounce search term to avoid API calls on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Fetch personnel data on component mount and when page/search/filters change
   useEffect(() => {
@@ -537,7 +543,7 @@ export default function PersonnelPage() {
     fetchRankCategories();
     fetchCompanies();
     fetchMedicalCategories();
-  }, [page, searchTerm, filters, statusFilter, rankFilter, bloodGroupFilter]);
+  }, [page, debouncedSearchTerm, filters, statusFilter, rankFilter, bloodGroupFilter]);
 
   const fetchPersonnel = async () => {
     try {
@@ -553,7 +559,7 @@ export default function PersonnelPage() {
         ...(rankFilter && { rank: rankFilter }),
         ...(bloodGroupFilter && { blood_group: bloodGroupFilter })
       };
-      const response = await personnelService.getAllPersonnel(page, limit, searchTerm, Object.keys(filtersToSend).length > 0 ? filtersToSend : undefined);
+      const response = await personnelService.getAllPersonnel(page, limit, debouncedSearchTerm, Object.keys(filtersToSend).length > 0 ? filtersToSend : undefined);
 
       if (response.status === 'success' && response.data) {
         const responseData = response.data as { personnel: any[]; pagination?: { total_pages?: number; total?: number } };

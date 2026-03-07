@@ -201,14 +201,16 @@ export default function CompaniesPage() {
       const response = await api.get(`/company/${companyId}`);
       if (response.status === 'success') {
         // Get personnel assigned to this company - filter to Officers rank category only (exclude JCO and Other Ranks)
-        const allPersonnel = response.data.company.company_personnel?.map((cp: any) => ({
-          id: cp.personnel.id,
-          army_no: cp.personnel.army_no,
-          name: cp.personnel.name,
-          rank: cp.personnel.rank,
-          status: cp.personnel.status,
-          rankCategoryName: cp.personnel.rank_info?.category?.name
-        })) || [];
+        const allPersonnel = response.data.company.company_personnel
+          ?.filter((cp: any) => cp.personnel)
+          ?.map((cp: any) => ({
+            id: cp.personnel.id,
+            army_no: cp.personnel.army_no,
+            name: cp.personnel.name,
+            rank: cp.personnel.rank,
+            status: cp.personnel.status,
+            rankCategoryName: cp.personnel.rank_info?.category?.name
+          })) || [];
         const officersOnly = allPersonnel.filter((p: { rankCategoryName?: string }) => p.rankCategoryName === 'Officers');
         setPersonnel(officersOnly);
         setPersonnelLoading(false);
@@ -355,7 +357,7 @@ export default function CompaniesPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {company.commander ? (
+                        {company.commander?.personnel ? (
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-white">
                               {company.commander.personnel.name}
@@ -383,7 +385,7 @@ export default function CompaniesPage() {
                               <button
                                 onClick={() => handleAssign(company)}
                                 className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-lg transition-colors"
-                                title={`Commander: ${company.commander.personnel.name}`}
+                                title={`Commander: ${company.commander.personnel?.name ?? 'Unknown'}`}
                               >
                                 Assigned
                               </button>
@@ -492,7 +494,7 @@ export default function CompaniesPage() {
               </h2>
               {selectedCompany.commander && (
                 <p className="text-sm text-gray-400 mt-2">
-                  Current Commander: {selectedCompany.commander.personnel.name}
+                  Current Commander: {selectedCompany.commander.personnel?.name ?? 'Unknown'}
                 </p>
               )}
             </div>
