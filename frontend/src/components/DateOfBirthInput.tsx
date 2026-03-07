@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 
 interface DateOfBirthInputProps {
   value: string;
@@ -54,8 +54,39 @@ export default function DateOfBirthInput({
     return d.toISOString().split("T")[0];
   }, [maxAge]);
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const customMessage = minAge > 0 && maxAge != null && maxAge > 0 && maxAge < 100
+    ? `Age must be above ${minAge} and below ${maxAge} years`
+    : "";
+
+  const validateAndSetCustomValidity = (dateValue: string) => {
+    const input = inputRef.current;
+    if (!input || !customMessage) return;
+    if (!dateValue) {
+      input.setCustomValidity("");
+      return;
+    }
+    const selected = new Date(dateValue);
+    const today = new Date();
+    let age = today.getFullYear() - selected.getFullYear();
+    const monthDiff = today.getMonth() - selected.getMonth();
+    const dayDiff = today.getDate() - selected.getDate();
+    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) age--;
+    if (age < minAge || age > maxAge) {
+      input.setCustomValidity(customMessage);
+    } else {
+      input.setCustomValidity("");
+    }
+  };
+
+  useEffect(() => {
+    validateAndSetCustomValidity(value);
+  }, [value, minAge, maxAge, customMessage]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange?.(e.target.value);
+    const selectedDate = e.target.value;
+    validateAndSetCustomValidity(selectedDate);
+    onChange?.(selectedDate);
   };
 
   const ageHint = minAge > 0 && maxAge != null && maxAge > 0 && maxAge < 100
@@ -76,6 +107,7 @@ export default function DateOfBirthInput({
         </label>
       )}
       <input
+        ref={inputRef}
         id={id || name}
         name={name}
         type="date"
