@@ -990,7 +990,10 @@ export default function PersonnelPage() {
         setShowUploadModal(false);
         setUploadFile(null);
         setValidationResult(null);
-        await fetchPersonnel();
+        // Only refresh list when there were no errors - otherwise fetchPersonnel clears the error display
+        if (errors === 0) {
+          await fetchPersonnel();
+        }
       } else {
         setError(response.message || "Failed to upload file");
       }
@@ -1080,7 +1083,7 @@ export default function PersonnelPage() {
 
         {/* Error Display */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400">
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 whitespace-pre-line">
             {error}
           </div>
         )}

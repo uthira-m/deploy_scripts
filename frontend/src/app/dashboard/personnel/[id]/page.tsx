@@ -2760,7 +2760,7 @@ export default function PersonnelDetailsPage() {
         unit: ereFormData.unit,
         from_date: ereFormData.from_date,
         to_date: ereFormData.to_date,
-        planned_ere: ereFormData.planned_ere,
+        planned_ere: ereFormData.planned_ere ?? "",
         remarks: ereFormData.remarks ?? "",
       };
 
@@ -6608,10 +6608,9 @@ export default function PersonnelDetailsPage() {
                       <option value="father" className="bg-gray-800">Father</option>
                       <option value="mother" className="bg-gray-800">Mother</option>
                       <option value="spouse" className="bg-gray-800">Spouse</option>
-                      <option value="child1" className="bg-gray-800">Child 1</option>
-                      <option value="child2" className="bg-gray-800">Child 2</option>
-                      <option value="child3" className="bg-gray-800">Child 3</option>
-                      <option value="child4" className="bg-gray-800">Child 4</option>
+                      <option value="child" className="bg-gray-800">Child</option>
+                      <option value="brother" className="bg-gray-800">Brother</option>
+                      <option value="sister" className="bg-gray-800">Sister</option>
                     </select>
                   </div>
 

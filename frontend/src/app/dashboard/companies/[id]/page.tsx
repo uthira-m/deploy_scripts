@@ -249,11 +249,11 @@ export default function CompanyDetailPage() {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                       Status
                     </th>
-                    {canAssignCompany && (
+                    {/* {canAssignCompany && (
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
                         Actions
                       </th>
-                    )}
+                    )} */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -262,13 +262,13 @@ export default function CompanyDetailPage() {
                     .map((cp) => (
                     <tr key={cp.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-white">{cp.personnel.army_no}</span>
+                        <span className="text-sm font-medium text-white">{cp.personnel?.army_no}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-semibold text-white">{cp.personnel.name}</span>
+                        <span className="text-sm font-semibold text-white">{cp.personnel?.name}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-300">{cp.personnel.rank}</span>
+                        <span className="text-sm text-gray-300">{cp.personnel?.rank}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -297,7 +297,7 @@ export default function CompanyDetailPage() {
                           {cp.status}
                         </span>
                       </td>
-                      {canAssignCompany && (
+                      {/* {canAssignCompany && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => confirmRemove(cp)}
@@ -306,7 +306,7 @@ export default function CompanyDetailPage() {
                             Remove
                           </button>
                         </td>
-                      )}
+                      )} */}
                     </tr>
                   ))}
                 </tbody>

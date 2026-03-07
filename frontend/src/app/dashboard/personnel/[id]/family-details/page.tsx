@@ -13,7 +13,7 @@ import DateOfBirthInput from "@/components/DateOfBirthInput";
 
 interface FamilyDetail {
   id: number;
-  relationship_type: 'father' | 'mother' | 'spouse' | 'child1' | 'child2' | 'child3' | 'child4';
+  relationship_type: 'father' | 'mother' | 'spouse' | 'child' | 'sister' | 'brother';
   name: string;
   dob?: string;
   contact_number?: string;
@@ -220,10 +220,9 @@ const FamilyDetailsPage = () => {
       case 'father': return 'Father';
       case 'mother': return 'Mother';
       case 'spouse': return 'Spouse';
-      case 'child1': return 'Child 1';
-      case 'child2': return 'Child 2';
-      case 'child3': return 'Child 3';
-      case 'child4': return 'Child 4';
+      case 'child': return 'Child';
+      case 'brother': return 'Brother';
+      case 'sister': return 'Sister';
       default: return type;
     }
   };
@@ -344,8 +343,12 @@ const FamilyDetailsPage = () => {
 
   const getAvailableRelationshipTypes = () => {
     const existingTypes = familyDetails.map(d => d.relationship_type);
-    const allTypes = ['father', 'mother', 'spouse', 'child1', 'child2', 'child3', 'child4'];
-    return allTypes.filter(type => !existingTypes.includes(type as any));
+    const allTypes = ['father', 'mother', 'spouse', 'child', 'brother', 'sister'];
+    // Only remove Father, Mother, Spouse if already added (one per personnel). Always show Child, Brother, Sister.
+    const typesToFilterIfExists = ['father', 'mother', 'spouse'];
+    return allTypes.filter(type =>
+      typesToFilterIfExists.includes(type) ? !existingTypes.includes(type as any) : true
+    );
   };
 
   if (loading) {
@@ -421,7 +424,7 @@ const FamilyDetailsPage = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Father, Mother, Spouse, Child 1 - 2 Column Layout */}
+              {/* Father, Mother, Spouse (one each), then all Children, Brothers, Sisters - 2 Column Layout */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Father */}
                 {familyDetails.find(d => d.relationship_type === 'father') && (
@@ -438,33 +441,21 @@ const FamilyDetailsPage = () => {
                   renderFamilyDetailCard(familyDetails.find(d => d.relationship_type === 'spouse')!)
                 )}
                 
-                {/* Child 1 */}
-                {familyDetails.find(d => d.relationship_type === 'child1') && (
-                  renderFamilyDetailCard(familyDetails.find(d => d.relationship_type === 'child1')!)
-                )}
+                {/* Children (multiple) */}
+                {familyDetails.filter(d => d.relationship_type === 'child').map(detail => (
+                  renderFamilyDetailCard(detail)
+                ))}
+                
+                {/* Brothers (multiple) */}
+                {familyDetails.filter(d => d.relationship_type === 'brother').map(detail => (
+                  renderFamilyDetailCard(detail)
+                ))}
+                
+                {/* Sisters (multiple) */}
+                {familyDetails.filter(d => d.relationship_type === 'sister').map(detail => (
+                  renderFamilyDetailCard(detail)
+                ))}
               </div>
-
-              {/* Child 2, 3, 4 - 3 Column Layout */}
-              {(familyDetails.find(d => d.relationship_type === 'child2') || 
-                familyDetails.find(d => d.relationship_type === 'child3') || 
-                familyDetails.find(d => d.relationship_type === 'child4')) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Child 2 */}
-                  {familyDetails.find(d => d.relationship_type === 'child2') && (
-                    renderFamilyDetailCard(familyDetails.find(d => d.relationship_type === 'child2')!)
-                  )}
-                  
-                  {/* Child 3 */}
-                  {familyDetails.find(d => d.relationship_type === 'child3') && (
-                    renderFamilyDetailCard(familyDetails.find(d => d.relationship_type === 'child3')!)
-                  )}
-                  
-                  {/* Child 4 */}
-                  {familyDetails.find(d => d.relationship_type === 'child4') && (
-                    renderFamilyDetailCard(familyDetails.find(d => d.relationship_type === 'child4')!)
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>

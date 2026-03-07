@@ -205,7 +205,7 @@ export default function CompaniesPage() {
           ?.filter((cp: any) => cp.personnel)
           ?.map((cp: any) => ({
             id: cp.personnel.id,
-            army_no: cp.personnel.army_no,
+            army_no: cp.personnel?.army_no,
             name: cp.personnel.name,
             rank: cp.personnel.rank,
             status: cp.personnel.status,

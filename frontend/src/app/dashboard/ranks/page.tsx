@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -33,6 +33,7 @@ interface RankCategory {
 export default function RanksPage() {
   const [ranks, setRanks] = useState<Rank[]>([]);
   const [rankCategories, setRankCategories] = useState<RankCategory[]>([]);
+  const [personnelCounts, setPersonnelCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export default function RanksPage() {
 
   const { user } = useAuth();
   const { canModify } = usePermissions();
+  const hasInitiallyLoaded = useRef(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,11 +59,14 @@ export default function RanksPage() {
   useEffect(() => {
     fetchRanks();
     fetchRankCategories();
+    fetchPersonnelCounts();
   }, [searchTerm]);
 
   const fetchRanks = async () => {
     try {
-      setLoading(true);
+      if (!hasInitiallyLoaded.current) {
+        setLoading(true);
+      }
       const params = new URLSearchParams({
         page: '1',
         limit: '1000', // Fetch all ranks in single page
@@ -78,6 +83,7 @@ export default function RanksPage() {
       setError(error.response?.data?.message || 'Failed to fetch ranks');
     } finally {
       setLoading(false);
+      hasInitiallyLoaded.current = true;
     }
   };
 
@@ -89,6 +95,21 @@ export default function RanksPage() {
       }
     } catch (error: any) {
       console.error('Error fetching rank categories:', error);
+    }
+  };
+
+  const fetchPersonnelCounts = async () => {
+    try {
+      const response = await api.get('/ranks/personnel-counts');
+      if (response.status === 'success' && response.data?.counts) {
+        const counts: Record<number, number> = {};
+        for (const [rankId, count] of Object.entries(response.data.counts)) {
+          counts[Number(rankId)] = Number(count);
+        }
+        setPersonnelCounts(counts);
+      }
+    } catch (error: any) {
+      console.error('Error fetching personnel counts:', error);
     }
   };
 
@@ -109,6 +130,7 @@ export default function RanksPage() {
         if (response.status === 'success') {
           setSuccess('Rank updated successfully');
           await fetchRanks();
+          await fetchPersonnelCounts();
           handleCancel();
         }
       } else {
@@ -117,6 +139,7 @@ export default function RanksPage() {
         if (response.status === 'success') {
           setSuccess('Rank created successfully');
           await fetchRanks();
+          await fetchPersonnelCounts();
           handleCancel();
         }
       }
@@ -153,6 +176,7 @@ export default function RanksPage() {
       if (response.status === 'success') {
         setSuccess('Rank deleted successfully');
         await fetchRanks();
+        await fetchPersonnelCounts();
       }
     } catch (error: any) {
       setError(error.response?.data?.message || 'Failed to delete rank');
@@ -225,7 +249,7 @@ export default function RanksPage() {
             Ranks Management
           </h1>
           <p className="text-gray-300 text-sm lg:text-base">
-            Manage military ranks organized by categories
+            Manage military ranks organized by categories. Counts show total personnel per rank.
           </p>
         </div>
 
@@ -336,9 +360,9 @@ export default function RanksPage() {
                         const order = (r: Rank) => { const o = (r as any).order ?? r.hierarchy_order; return (o != null && o > 0) ? o : (RANK_ORDER[r.name?.trim() ?? ''] ?? 999); };
                         return order(a) - order(b);
                       })
-                      .map((rank) => (
+                        .map((rank) => (
                         <div key={rank.id} className="flex justify-between items-center text-gray-300 pl-4 py-1 hover:bg-white/5 rounded">
-                          <span>• {rank.name}</span>
+                          <span>• {rank.name} <span className="text-blue-400 font-medium">({personnelCounts[rank.id] ?? 0})</span></span>
                           {canModify && (
                             <div className="flex gap-2">
                               <button
