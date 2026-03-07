@@ -795,7 +795,6 @@ export default function PersonnelPage() {
   };
 
   const parseDate = (val: string | number | Date | null | undefined): Date | null => {
-    console.log('val', val);
     if (val == null) return null;
     if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
     if (typeof val === "number") {
@@ -807,21 +806,15 @@ export default function PersonnelPage() {
     }
     const s = String(val).trim();
     if (!s) return null;
-    // Excel serial as string (e.g. "34827" for 15-May-1995)
+    // DD-MM-YYYY string
+    const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+    if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+    // Excel serial as string (e.g. "34834" when Excel stores date as number)
     const num = parseFloat(s);
     if (!isNaN(num) && num >= 1 && num <= 2958465 && /^\d+$/.test(s)) {
       const date = new Date((num - 25569) * 86400 * 1000);
       return isNaN(date.getTime()) ? null : date;
     }
-    // YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, YYYY/MM/DD
-    const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-    if (m1) return new Date(parseInt(m1[1], 10), parseInt(m1[2], 10) - 1, parseInt(m1[3], 10));
-    const m2 = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
-    if (m2) return new Date(parseInt(m2[3], 10), parseInt(m2[2], 10) - 1, parseInt(m2[1], 10));
-    const m3 = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
-    if (m3) return new Date(parseInt(m3[3], 10), parseInt(m3[2], 10) - 1, parseInt(m3[1], 10));
-    const m4 = /^(\d{4})\/(\d{2})\/(\d{2})$/.exec(s);
-    if (m4) return new Date(parseInt(m4[1], 10), parseInt(m4[2], 10) - 1, parseInt(m4[3], 10));
     return null;
   };
 
@@ -898,9 +891,11 @@ export default function PersonnelPage() {
               errors.push({ row: rowNum, armyNo, field: "dob", error: "Date Of Birth is required" });
               continue;
             }
+            console.log("dobRaw", dobRaw);
             const dob = parseDate(dobRaw);
+            console.log("dob", dob);
             if (!dob) {
-              errors.push({ row: rowNum, armyNo, field: "dob", error: "Invalid Date Of Birth format (use DD-MM-YYYY or YYYY-MM-DD)" });
+              errors.push({ row: rowNum, armyNo, field: "dob", error: "Invalid Date Of Birth format (use DD-MM-YYYY)" });
               continue;
             }
             if (doeRaw == null || (typeof doeRaw === "string" && !doeRaw.trim())) {
@@ -909,7 +904,7 @@ export default function PersonnelPage() {
             }
             const doe = parseDate(doeRaw);
             if (!doe) {
-              errors.push({ row: rowNum, armyNo, field: "doe", error: "Invalid Date Of Entry format (use DD-MM-YYYY or YYYY-MM-DD)" });
+              errors.push({ row: rowNum, armyNo, field: "doe", error: "Invalid Date Of Entry format (use DD-MM-YYYY)" });
               continue;
             }
             if (doe > new Date()) {
@@ -2768,7 +2763,7 @@ export default function PersonnelPage() {
               <div className="p-6 space-y-6">
                 <div>
                   <p className="text-sm text-gray-300 mb-2">
-                    <strong className="text-white">Mandatory:</strong> Army No, Full Name, Rank, Date Of Birth, Date Of Entry, Phone number, Company (dates: DD-MM-YYYY or YYYY-MM-DD)
+                    <strong className="text-white">Mandatory:</strong> Army No, Full Name, Rank, Date Of Birth, Date Of Entry, Phone number, Company (dates: DD-MM-YYYY, or Excel date format)
                   </p>
                   <p className="text-sm text-gray-400 mb-2">
                     <strong className="text-gray-300">Optional:</strong> PAN Card, Aadhar Card, NOK, Account Number, DSP Account, Blood Group, Date of Marriage
