@@ -1,12 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { personalAuthService } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { ArrowLeft } from "lucide-react";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated, isLoading } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -23,6 +25,13 @@ export default function ChangePasswordPage() {
   const toggleCurrentPasswordVisibility = () => setShowCurrentPassword(!showCurrentPassword);
   const toggleNewPasswordVisibility = () => setShowNewPassword(!showNewPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +71,14 @@ export default function ChangePasswordPage() {
     }
   };
 
+  if (isLoading || !isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center relative overflow-hidden">
       {/* Animated Gradient Blobs */}
@@ -71,6 +88,13 @@ export default function ChangePasswordPage() {
         <div className="absolute bottom-10 left-1/2 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000" />
       </div>
       <div className="relative z-10 w-full max-w-md mx-auto px-6 py-12 flex flex-col items-center">
+        <Link
+            href="/dashboard"
+            className="fixed top-6 left-6 z-20 flex items-center gap-2 text-gray-400 hover:text-white transition-colors duration-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Dashboard
+          </Link>
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 w-full flex flex-col items-center">
           <h2 className="text-3xl font-bold text-white mb-2 text-center">Change Password</h2>
           <p className="text-gray-300 mb-6 text-center">Update your password to secure your account.</p>

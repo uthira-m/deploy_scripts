@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useState } from 'react';
-import { LayoutDashboard, CalendarDays,UserCheck, BookOpen, Star, Crown, Users, Building2, Award, User, GraduationCap, Menu, X, Image, LogOut, UserCog, ChevronLeft, ChevronRight,HeartPulse, Drone, Filter, ShieldCheck, FileText, ClipboardList, Database } from 'lucide-react';
+import { LayoutDashboard, CalendarDays,UserCheck, BookOpen, Star, Crown, Users, Building2, Award, User, GraduationCap, Menu, X, Image, LogOut, UserCog, ChevronLeft, ChevronRight,HeartPulse, Drone, Filter, ShieldCheck, FileText, ClipboardList, Database, KeyRound } from 'lucide-react';
 import ImageComponent from 'next/image';
 import logoImage from '@/assets/logo1.png';
 import { useAppSettings } from '@/contexts/AppSettingsContext';
@@ -267,6 +267,14 @@ export default function Sidebar() {
                     {user.profile?.name?.charAt(0) || user?.name?.charAt(0) || 'U'}
                   </span>
                 </div>
+                <Link
+                  href="/change-password"
+                  onClick={closeMobileMenu}
+                  className="p-2 cursor-pointer rounded-lg text-gray-400 hover:bg-blue-500/20 hover:text-blue-400 transition-all duration-150 border border-transparent hover:border-blue-500/30"
+                  title="Change Password"
+                >
+                  <KeyRound className="w-5 h-5" />
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="p-2 cursor-pointer rounded-lg text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition-all duration-150 border border-transparent hover:border-rose-500/30"
@@ -276,8 +284,8 @@ export default function Sidebar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3 px-2 flex-1 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
                     <span className="text-blue-400 font-bold text-lg">
                       {user.profile?.name?.charAt(0) || user?.name?.charAt(0) || 'U'}
@@ -291,15 +299,24 @@ export default function Sidebar() {
                       {user.role || 'User'}
                     </p>
                   </div>
-                  
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 cursor-pointer rounded-lg text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition-all duration-150 border border-transparent hover:border-rose-500/30"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2 px-2">
+                  <Link
+                    href="/change-password"
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-blue-500/20 hover:text-blue-400 transition-all duration-150 border border-transparent hover:border-blue-500/30 flex-1 justify-center text-sm font-medium"
+                  >
+                    <KeyRound className="w-4 h-4 flex-shrink-0" />
+                    Change Password
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 cursor-pointer rounded-lg text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition-all duration-150 border border-transparent hover:border-rose-500/30"
+                    title="Logout"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
