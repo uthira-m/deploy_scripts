@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Pagination } from "@/components/Pagination";
 import RemarksTooltip from "@/components/RemarksTooltip";
 import { courseService, api } from "@/lib/api";
 import { paginationConfig } from "@/config/pagination";
@@ -31,7 +32,7 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [formLoading, setFormLoading] = useState(false);
@@ -61,7 +62,7 @@ export default function CoursesPage() {
   // Fetch courses data on component mount and when page/search changes
   useEffect(() => {
     fetchCourses();
-  }, [page, searchTerm]);
+  }, [page, limit, searchTerm]);
 
   // Clear success/error messages after 5 seconds
   useEffect(() => {
@@ -234,20 +235,34 @@ export default function CoursesPage() {
           <p className="text-gray-300 text-sm lg:text-base">Manage military courses and training programs</p>
         </div>
 
-        {/* Add Course Button - Only for Admin */}
-        {canModify && (
-          <div className="mb-6 lg:mb-8">
-            <button
-              onClick={handleAddClick}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Course
-            </button>
+        {/* Add Course Button + Search - Only for Admin */}
+        <div className="mb-6 lg:mb-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            {canModify && (
+              <button
+                onClick={handleAddClick}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer w-fit"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Course
+              </button>
+            )}
+            <div className="flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
+              <input
+                type="text"
+                placeholder="Search courses..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(paginationConfig.DEFAULT_PAGE);
+                }}
+                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-sm"
+              />
+            </div>
           </div>
-        )}
+        </div>
         
         {/* View-Only Notice for Commander/Personnel */}
         {!canModify && (
@@ -267,33 +282,6 @@ export default function CoursesPage() {
             {error}
           </div>
         )}
-
-        {/* Search and Filter Controls */}
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Search courses..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(paginationConfig.DEFAULT_PAGE);
-                }}
-                className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-sm"
-              />
-            </div>
-            {/* <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-gray-700 border cursor-pointer border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Courses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select> */}
-          </div>
-        </div>
 
 
         {/* Courses Table */}
@@ -384,42 +372,14 @@ export default function CoursesPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-gray-300 text-sm">
-              Showing {filteredCourses.length} of {total} courses
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 lg:px-4 py-2 rounded-lg text-sm cursor-pointer ${
-                    page === p
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20 transition-colors'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          limit={limit}
+          total={total}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
+          className="mt-6"
+        />
 
         {/* Add/Edit Course Modal */}
         {(showAddForm || showEditForm) && (

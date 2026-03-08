@@ -31,6 +31,7 @@ const FamilyDetailsPage = () => {
   const personnelId = params.id as string;
 
   const [familyDetails, setFamilyDetails] = useState<FamilyDetail[]>([]);
+  const [personnelDateOfMarriage, setPersonnelDateOfMarriage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -118,9 +119,17 @@ const FamilyDetailsPage = () => {
   const fetchFamilyDetails = async () => {
     try {
       setLoading(true);
-      const response = await personnelService.getPersonnelFamilyDetails(parseInt(personnelId));
-      if (response.status === 'success' && response.data) {
-        setFamilyDetails(response.data.familyDetails || []);
+      const [familyRes, personnelRes] = await Promise.all([
+        personnelService.getPersonnelFamilyDetails(parseInt(personnelId)),
+        personnelService.getPersonnelById(parseInt(personnelId)),
+      ]);
+      if (familyRes.status === 'success' && familyRes.data) {
+        setFamilyDetails(familyRes.data.familyDetails || []);
+      }
+      if (personnelRes.status === 'success' && personnelRes.data) {
+        const data = personnelRes.data as { personnel?: { date_of_marriage?: string } };
+        const dom = data?.personnel?.date_of_marriage;
+        setPersonnelDateOfMarriage(dom && String(dom).trim() ? String(dom) : null);
       }
     } catch (err: any) {
       notifyError(err.message || 'Failed to fetch family details');
@@ -191,6 +200,13 @@ const FamilyDetailsPage = () => {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    // Spouse and child require personnel to have date of marriage
+    const isSpouseOrChild = ['spouse', 'child'].includes(formData.relationship_type);
+    if (isSpouseOrChild && !personnelDateOfMarriage) {
+      notifyError('Spouse and Child can only be added when the personnel has a Date of Marriage recorded.');
       return;
     }
 
@@ -343,7 +359,12 @@ const FamilyDetailsPage = () => {
 
   const getAvailableRelationshipTypes = () => {
     const existingTypes = familyDetails.map(d => d.relationship_type);
-    const allTypes = ['father', 'mother', 'spouse', 'child', 'brother', 'sister'];
+    const hasDateOfMarriage = !!personnelDateOfMarriage;
+    // Spouse and child only available when personnel has date of marriage
+    let allTypes = ['father', 'mother', 'brother', 'sister'];
+    if (hasDateOfMarriage) {
+      allTypes = ['father', 'mother', 'spouse', 'child', 'brother', 'sister'];
+    }
     // Only remove Father, Mother, Spouse if already added (one per personnel). Always show Child, Brother, Sister.
     const typesToFilterIfExists = ['father', 'mother', 'spouse'];
     return allTypes.filter(type =>

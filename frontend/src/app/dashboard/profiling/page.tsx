@@ -996,15 +996,6 @@ export default function GlobalProfilingPage() {
             </div>
           </div>
         )}
-
-        <div className="mt-4 print:hidden">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-          >
-            <span>← Back to Dashboard</span>
-          </Link>
-        </div>
       </div>
     </ProtectedRoute>
   );

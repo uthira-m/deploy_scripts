@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaveService } from '@/lib/api';
+import { Pagination } from '@/components/Pagination';
+import ConfirmModal from '@/components/ConfirmModal';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase } from 'lucide-react';
+import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase, Trash2 } from 'lucide-react';
 import { paginationConfig } from '@/config/pagination';
 
 interface LeaveType {
@@ -100,7 +102,22 @@ export default function LeaveManagementPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    type?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Yes, Delete',
+    type: 'danger',
+    onConfirm: () => {}
+  });
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -141,7 +158,7 @@ export default function LeaveManagementPage() {
 
   useEffect(() => {
     if (user?.role) loadData();
-  }, [activeTab, user?.role, page, statusFilter, leaveCategoryFilter]);
+  }, [activeTab, user?.role, page, limit, statusFilter, leaveCategoryFilter]);
 
   // Load leave types from API
   useEffect(() => {
@@ -496,6 +513,32 @@ export default function LeaveManagementPage() {
       console.error('Error extending leave:', error);
       showError(error?.message || 'Failed to extend leave');
     }
+  };
+
+  const openDeleteConfirm = (request: any) => {
+    const personnelName = request.personnel?.name || request.User?.profile?.name || request.User?.name || 'N/A';
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Leave Request',
+      message: `Are you sure you want to delete this leave request for ${personnelName}? This action cannot be undone.`,
+      confirmText: 'Yes, Delete',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const response = await leaveService.deleteLeaveRequest(request.id);
+          if (response?.success !== false) {
+            showSuccess('Leave request deleted successfully!');
+            loadData();
+          } else {
+            showError(response?.message || 'Failed to delete leave request');
+          }
+        } catch (error: any) {
+          console.error('Error deleting leave request:', error);
+          showError(error?.message || error?.response?.data?.message || 'Failed to delete leave request');
+        }
+      }
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -963,7 +1006,7 @@ export default function LeaveManagementPage() {
                         </td>
                         <td className="px-4 py-3">
                           {request.status === 'Pending' ? (
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => handleQuickApprove(request.id)}
                                 className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-medium hover:bg-emerald-500/30 transition-colors"
@@ -981,19 +1024,38 @@ export default function LeaveManagementPage() {
                                 <XIcon className="w-4 h-4 inline mr-1" />
                                 Reject
                               </button>
+                              <button
+                                onClick={() => openDeleteConfirm(request)}
+                                className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 inline" />
+                              </button>
                             </div>
                           ) : (request.status === 'Approved' || request.status === 'approved' || request.status === 'Extended' || request.status === 'extended') ? (
                             <div className="flex gap-2">
-                              {/* <span className="text-xs text-emerald-400 font-medium">Approved</span> */}
                               <button
                                 onClick={() => handleExtendLeave(request)}
                                 className="px-2 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded text-xs font-medium hover:bg-blue-500/30 transition-colors"
                               >
                                 Extend
                               </button>
+                              <button
+                                onClick={() => openDeleteConfirm(request)}
+                                className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 inline" />
+                              </button>
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-500">Rejected</span>
+                            <button
+                              onClick={() => openDeleteConfirm(request)}
+                              className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 inline" />
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -1004,54 +1066,18 @@ export default function LeaveManagementPage() {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-gray-300 text-sm">
-                  Showing {filteredRequests.length} of {total} leave requests
-                </p>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => {
-                      const params = new URLSearchParams(searchParams.toString());
-                      params.set('page', String(Math.max(1, page - 1)));
-                      router.push(`/dashboard/leave?${params.toString()}`);
-                    }}
-                    disabled={page === 1}
-                    className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => {
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set('page', String(p));
-                        router.push(`/dashboard/leave?${params.toString()}`);
-                      }}
-                      className={`px-3 lg:px-4 py-2 rounded-lg text-sm cursor-pointer ${
-                        page === p
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white/10 text-white hover:bg-white/20 transition-colors'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      const params = new URLSearchParams(searchParams.toString());
-                      params.set('page', String(Math.min(totalPages, page + 1)));
-                      router.push(`/dashboard/leave?${params.toString()}`);
-                    }}
-                    disabled={page === totalPages}
-                    className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              limit={limit}
+              total={total}
+              onPageChange={(p) => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('page', String(p));
+                router.push(`/dashboard/leave?${params.toString()}`);
+              }}
+              onLimitChange={setLimit}
+              className="mt-6"
+            />
           </div>
         </div>
       ) : (
@@ -1232,13 +1258,13 @@ export default function LeaveManagementPage() {
                           </td>
                           <td className="px-4 py-3">
                             {request.status === 'Pending' ? (
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap gap-2">
                                 <button
                                   onClick={() => handleQuickApprove(request.id)}
                                   className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-medium hover:bg-emerald-500/30 transition-colors"
                                 >
                                   <Check className="w-4 h-4 inline mr-1" />
-                                Approve
+                                  Approve
                                 </button>
                                 <button
                                   onClick={() => {
@@ -1248,7 +1274,14 @@ export default function LeaveManagementPage() {
                                   className="px-3 py-1 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded text-xs font-medium hover:bg-rose-500/30 transition-colors"
                                 >
                                   <XIcon className="w-4 h-4 inline mr-1" />
-                                Reject
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => openDeleteConfirm(request)}
+                                  className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4 inline" />
                                 </button>
                               </div>
                             ) : (request.status === 'Approved' || request.status === 'Extended') ? (
@@ -1262,9 +1295,22 @@ export default function LeaveManagementPage() {
                                     Extend
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => openDeleteConfirm(request)}
+                                  className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4 inline" />
+                                </button>
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-500">Rejected</span>
+                              <button
+                                onClick={() => openDeleteConfirm(request)}
+                                className="px-2 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded text-xs font-medium hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 inline" />
+                              </button>
                             )}
                           </td>
                         </tr>
@@ -1499,6 +1545,18 @@ export default function LeaveManagementPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText ?? 'Yes, Delete'}
+        cancelText="Cancel"
+        type={confirmModal.type ?? 'danger'}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
 
       {/* Rejection Modal */}
       {showApprovalModal && selectedApproval && (

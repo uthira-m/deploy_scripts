@@ -48,15 +48,15 @@ const rankColumns = [
 ];
 
 const corpsSubColumns = [
-  { key: "eme_chm_att", label: "CHM (Att)", pdfLabel: "CHM (Att)", colNum: 27 },
-  { key: "eme_armr", label: "Armr", pdfLabel: "Armr", colNum: 28 },
-  { key: "eme_veh_mech", label: "Veh Mech", pdfLabel: "Veh Mech", colNum: 29 },
-  { key: "eme_elect", label: "Elect", pdfLabel: "Elect", colNum: 30 },
-  { key: "amc_rmo_offr", label: "RMO (Offr)", pdfLabel: "RMO (Offr)", colNum: 31 },
-  { key: "amc_nursing_asst", label: "Nursing Asst", pdfLabel: "Nursing Asst", colNum: 32 },
-  { key: "aec_jcos", label: "JCOs", pdfLabel: "JCOs", colNum: 33 },
-  { key: "aec_hav", label: "Hav", pdfLabel: "Hav", colNum: 34 },
-  { key: "total_27_34", label: "Total (25-34)", pdfLabel: "TOTAL (25-34)", colNum: 35 },
+  { key: "eme_chm_att", label: "CHM (Att)", pdfLabel: "CHM (Att)", colNum: 25 },
+  { key: "eme_armr", label: "Armr", pdfLabel: "Armr", colNum: 26 },
+  { key: "eme_veh_mech", label: "Veh Mech", pdfLabel: "Veh Mech", colNum: 27 },
+  { key: "eme_elect", label: "Elect", pdfLabel: "Elect", colNum: 28 },
+  { key: "amc_rmo_offr", label: "RMO (Offr)", pdfLabel: "RMO (Offr)", colNum: 29 },
+  { key: "amc_nursing_asst", label: "Nursing Asst", pdfLabel: "Nursing Asst", colNum: 30 },
+  { key: "aec_jcos", label: "JCOs", pdfLabel: "JCOs", colNum: 31 },
+  { key: "aec_hav", label: "Hav", pdfLabel: "Hav", colNum: 32 },
+  { key: "total_27_34", label: "Total (25-32)", pdfLabel: "TOTAL (25-32)", colNum: 33 },
 ];
 
 // Short labels for PDF trade columns (matches reference layout)
@@ -157,15 +157,15 @@ export default function ParadeStatePage() {
       "DETAILS",
       ...rankColumns.map((c) => c.pdfLabel),
       ...tradesmen.map((t) => getTradePdfLabel(t.trade_name)),
-      "TOTAL (12 to 25)",
+      "TOTAL (12 to 23)",
       ...corpsSubColumns.map((c) => c.pdfLabel),
     ];
     const headRow2 = [
       "1",
       ...rankColumns.map((c) => (c.key === "total_2_10" ? "2-10" : String(c.colNum))),
       ...tradesmen.map((_, i) => String(12 + i)),
-      "12-25",
-      ...corpsSubColumns.map((c) => (c.key === "total_27_34" ? "27-34" : String(c.colNum))),
+      "12-23",
+      ...corpsSubColumns.map((c) => (c.key === "total_27_34" ? "25-32" : String(c.colNum))),
     ];
     const colKeys = [
       "Details",
@@ -363,14 +363,14 @@ export default function ParadeStatePage() {
                     </td>
                   ))}
                   <td className="px-2 py-1 text-center text-xs text-gray-500">
-                    12-25
+                    12-23
                   </td>
                   {corpsSubColumns.map((c) => (
                     <td
                       key={c.key}
                       className="px-2 py-1 text-center text-xs text-gray-500"
                     >
-                      {c.key === "total_27_34" ? "27-34" : c.colNum}
+                      {c.key === "total_27_34" ? "25-32" : c.colNum}
                     </td>
                   ))}
                 </tr>

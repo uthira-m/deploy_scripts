@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Pagination } from "@/components/Pagination";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelJCOService, personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
@@ -93,7 +94,7 @@ export default function PersonnelJCOPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -444,7 +445,7 @@ export default function PersonnelJCOPage() {
     fetchRanks();
     fetchCompanies();
     fetchMedicalCategories();
-  }, [page, searchTerm, filters, statusFilter, rankFilter]);
+  }, [page, limit, searchTerm, filters, statusFilter, rankFilter]);
 
   const fetchPersonnel = async () => {
     try {
@@ -761,7 +762,7 @@ export default function PersonnelJCOPage() {
 
   return (
     <ProtectedRoute>
-      <div className="mx-auto p-4 lg:p-6">
+      <div className="mx-auto p-4 lg:p-6 flex flex-col h-[calc(100vh-0rem)] min-h-[700px]">
         <ConfirmModal
           isOpen={confirmModal.isOpen}
           title={confirmModal.title}
@@ -773,37 +774,34 @@ export default function PersonnelJCOPage() {
           onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
         />
 
-        <div className="mb-6 lg:mb-8">
+        <div className="mb-6 lg:mb-8 flex-shrink-0">
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">Personnel Management - JCO</h1>
           <p className="text-gray-300 text-sm lg:text-base">Manage JCO Category personnel records</p>
         </div>
 
-        {canModify && (
-          <div className="mb-6 lg:mb-8">
-            <button
-              onClick={() => {
-                resetForm();
-                setShowAddForm(true);
-              }}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Personnel
-            </button>
-          </div>
-        )}
-
         {error && (
-          <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 text-red-300 rounded-lg">
+          <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 text-red-300 rounded-lg flex-shrink-0">
             <p className="text-sm">{error}</p>
           </div>
         )}
 
-        <div className="bg-gray-800/50 rounded-lg p-4 lg:p-6 mb-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex-1">
+        <div className="bg-gray-800/50 rounded-lg p-4 lg:p-6 mb-6 flex-shrink-0">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            {canModify && (
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowAddForm(true);
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer flex-shrink-0 order-first"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Personnel
+              </button>
+            )}
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Search by name, army no, rank"
@@ -815,7 +813,7 @@ export default function PersonnelJCOPage() {
                 className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
               <div className="relative">
                 <select
                   value={statusFilter}
@@ -874,19 +872,20 @@ export default function PersonnelJCOPage() {
           </div>
         </div>
 
+        <div className="flex-1 min-h-0 flex flex-col">
         {loading ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 flex-shrink-0">
             <p className="text-gray-400">Loading personnel...</p>
           </div>
         ) : filteredPersonnel.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 flex-shrink-0">
             <p className="text-gray-400">No personnel found</p>
           </div>
         ) : (
-          <div className="bg-gray-800/50 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 flex flex-col bg-gray-800/50 rounded-lg overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto">
               <table className="w-full">
-                <thead className="bg-white/10">
+                <thead className="sticky top-0 z-10 bg-slate-800">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">S.No</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Army No</th>
@@ -964,11 +963,21 @@ export default function PersonnelJCOPage() {
                       </td>
                     </tr>
                   ))}
-</tbody>
-                </table>
+                </tbody>
+              </table>
               </div>
             </div>
         )}
+        {/* Pagination */}
+        <Pagination
+          page={page}
+          limit={limit}
+          total={total}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
+          className="mt-4 p-4 flex-shrink-0 border-t border-white/10"
+        />
+        </div>
 
         {/* Actions dropdown - rendered via portal to escape table overflow */}
         {openOverflowId && actionsMenuPosition && typeof document !== "undefined" && (() => {
@@ -1025,44 +1034,6 @@ export default function PersonnelJCOPage() {
             document.body
           );
         })()}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-gray-300 text-sm">
-              Showing {filteredPersonnel.length} of {total} personnel
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 lg:px-4 py-2 rounded-lg text-sm cursor-pointer ${
-                    page === p
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20 transition-colors'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Add/Edit Form Modal - Same as officers page */}
         {showAddForm && (

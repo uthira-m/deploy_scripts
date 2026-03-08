@@ -26,6 +26,7 @@ const MyFamilyDetailsPage = () => {
   const { success: notifySuccess, error: notifyError } = useNotification();
 
   const [familyDetails, setFamilyDetails] = useState<FamilyDetail[]>([]);
+  const [personnelDateOfMarriage, setPersonnelDateOfMarriage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -105,7 +106,10 @@ const MyFamilyDetailsPage = () => {
       // Get current user's personnel ID from their profile
       const profileResponse = await personnelService.getPersonalProfile();
       if (profileResponse.status === 'success' && profileResponse.data?.personnel) {
-        const personnelId = profileResponse.data.personnel.id;
+        const personnel = profileResponse.data.personnel as { id: number; date_of_marriage?: string };
+        const personnelId = personnel.id;
+        const dom = personnel?.date_of_marriage;
+        setPersonnelDateOfMarriage(dom && String(dom).trim() ? String(dom) : null);
         const response = await personnelService.getPersonnelFamilyDetails(personnelId);
         if (response.status === 'success' && response.data) {
           setFamilyDetails(response.data.familyDetails || []);
@@ -174,6 +178,13 @@ const MyFamilyDetailsPage = () => {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    // Spouse and child require personnel to have date of marriage
+    const isSpouseOrChild = ['spouse', 'child'].includes(formData.relationship_type);
+    if (isSpouseOrChild && !personnelDateOfMarriage) {
+      notifyError('Spouse and Child can only be added when you have a Date of Marriage recorded in your profile.');
       return;
     }
 
@@ -326,7 +337,12 @@ const MyFamilyDetailsPage = () => {
 
   const getAvailableRelationshipTypes = () => {
     const existingTypes = familyDetails.map(d => d.relationship_type);
-    const allTypes = ['father', 'mother', 'spouse', 'child', 'brother', 'sister'];
+    const hasDateOfMarriage = !!personnelDateOfMarriage;
+    // Spouse and child only available when personnel has date of marriage
+    let allTypes = ['father', 'mother', 'brother', 'sister'];
+    if (hasDateOfMarriage) {
+      allTypes = ['father', 'mother', 'spouse', 'child', 'brother', 'sister'];
+    }
     // Only remove Father, Mother, Spouse if already added (one per personnel). Always show Child, Brother, Sister.
     const typesToFilterIfExists = ['father', 'mother', 'spouse'];
     return allTypes.filter(type =>

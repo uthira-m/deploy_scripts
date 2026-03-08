@@ -253,20 +253,62 @@ export default function RanksPage() {
           </p>
         </div>
 
-        {/* Add Rank Button */}
-        {canModify && (
-          <div className="mb-6 lg:mb-8">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Rank
-            </button>
+        {/* Add Rank Button + Search and Filter */}
+        <div className="mb-6 lg:mb-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center flex-wrap">
+            {canModify && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 w-fit"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Rank
+              </button>
+            )}
+            <div className="flex flex-col sm:flex-row gap-4 sm:items-center flex-1 min-w-0">
+              <div className="relative flex-1 min-w-0 sm:min-w-[180px] sm:max-w-xs">
+                <input
+                  type="text"
+                  placeholder="Search ranks..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <div className="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-xs">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full appearance-none px-4 py-3 pr-10 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Categories</option>
+                  {rankCategories
+                    .filter(category => category.is_active)
+                    .sort((a, b) => a.hierarchy_order - b.hierarchy_order)
+                    .map((category) => (
+                      <option key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </option>
+                    ))}
+                </select>
+                <svg
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Success/Error Messages */}
         {success && (
@@ -280,49 +322,6 @@ export default function RanksPage() {
             {error}
           </div>
         )}
-
-        {/* Search and Filter */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search ranks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-3 pl-10 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          
-          <div className="relative">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full appearance-none px-4 py-3 pr-10 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Categories</option>
-              {rankCategories
-                .filter(category => category.is_active)
-                .sort((a, b) => a.hierarchy_order - b.hierarchy_order)
-                .map((category) => (
-                  <option key={category.id} value={category.id.toString()}>
-                    {category.name}
-                  </option>
-                ))}
-            </select>
-            <svg
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
 
         {/* Ranks List */}
         <div className="grid gap-6">
@@ -363,7 +362,7 @@ export default function RanksPage() {
                         .map((rank) => (
                         <div key={rank.id} className="flex justify-between items-center text-gray-300 pl-4 py-1 hover:bg-white/5 rounded">
                           <span>• {rank.name} <span className="text-blue-400 font-medium">({personnelCounts[rank.id] ?? 0})</span></span>
-                          {canModify && (
+                          {/* {canModify && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleEdit(rank)}
@@ -384,7 +383,7 @@ export default function RanksPage() {
                                 </svg>
                               </button>
                             </div>
-                          )}
+                          )} */}
                         </div>
                       ))}
                   </div>

@@ -2073,6 +2073,16 @@ export default function PersonnelDetailsPage() {
       return;
     }
 
+    // Spouse and child require personnel to have date of marriage (only when adding new, not when editing)
+    if (!editingFamilyDetail) {
+      const isSpouseOrChild = ['spouse', 'child'].includes(familyDetailFormData.relationship_type);
+      if (isSpouseOrChild && !personnel?.date_of_marriage) {
+        setError("Spouse and Child can only be added when the personnel has a Date of Marriage recorded.");
+        setFamilyDetailLoading(false);
+        return;
+      }
+    }
+
     try {
       const familyDetailData = {
         relationship_type: familyDetailFormData.relationship_type,
@@ -6607,8 +6617,12 @@ export default function PersonnelDetailsPage() {
                       <option value="" className="bg-gray-800">Select Relationship</option>
                       <option value="father" className="bg-gray-800">Father</option>
                       <option value="mother" className="bg-gray-800">Mother</option>
-                      <option value="spouse" className="bg-gray-800">Spouse</option>
-                      <option value="child" className="bg-gray-800">Child</option>
+                      {(personnel?.date_of_marriage || (editingFamilyDetail && ['spouse', 'child'].includes(editingFamilyDetail.relationship_type))) && (
+                        <>
+                          <option value="spouse" className="bg-gray-800">Spouse</option>
+                          <option value="child" className="bg-gray-800">Child</option>
+                        </>
+                      )}
                       <option value="brother" className="bg-gray-800">Brother</option>
                       <option value="sister" className="bg-gray-800">Sister</option>
                     </select>

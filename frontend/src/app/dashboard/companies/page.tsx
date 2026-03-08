@@ -254,20 +254,31 @@ export default function CompaniesPage() {
           <p className="text-gray-300 text-sm lg:text-base">Manage company records and information</p>
         </div>
 
-        {/* Add Company Button - Only for Admin */}
-        {canModify && (
-          <div className="mb-6 lg:mb-8">
-            <button
-              onClick={handleAddNew}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Company
-            </button>
+        {/* Add Company Button + Search */}
+        <div className="mb-6 lg:mb-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+            {canModify && (
+              <button
+                onClick={handleAddNew}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer w-fit"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Company
+              </button>
+            )}
+            <div className="flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
+              <input
+                type="text"
+                placeholder="Search by company name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-        )}
+        </div>
         
         {/* View-Only Notice for Commander/Personnel */}
         {!canModify && (
@@ -275,17 +286,6 @@ export default function CompaniesPage() {
             <p className="text-sm">📖 You are viewing companies in read-only mode. Contact an administrator to make changes.</p>
           </div>
         )}
-
-        {/* Search */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 mb-6 shadow-lg">
-          <input
-            type="text"
-            placeholder="Search by company name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
 
         {/* Companies Table */}
         <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden shadow-lg">

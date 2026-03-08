@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Pagination } from "@/components/Pagination";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
@@ -138,7 +139,7 @@ export default function PersonnelPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [formData, setFormData] = useState({
@@ -543,7 +544,7 @@ export default function PersonnelPage() {
     fetchRankCategories();
     fetchCompanies();
     fetchMedicalCategories();
-  }, [page, debouncedSearchTerm, filters, statusFilter, rankFilter, bloodGroupFilter]);
+  }, [page, limit, debouncedSearchTerm, filters, statusFilter, rankFilter, bloodGroupFilter]);
 
   const fetchPersonnel = async () => {
     try {
@@ -1024,7 +1025,7 @@ export default function PersonnelPage() {
 
   return (
     <ProtectedRoute>
-      <div className="mx-auto p-4 lg:p-6">
+      <div className="mx-auto p-4 lg:p-6 flex flex-col h-[calc(100vh-0rem)] min-h-[500px]">
         {/* Confirmation Modal */}
         <ConfirmModal
           isOpen={confirmModal.isOpen}
@@ -1038,7 +1039,7 @@ export default function PersonnelPage() {
         />
 
         {/* Header */}
-        <div className="mb-6 lg:mb-8">
+        <div className="mb-6 lg:mb-8 flex-shrink-0">
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
             {user?.role === 'commander' ? 'My Personnel' : 'Personnel Management'}
           </h1>
@@ -1050,31 +1051,9 @@ export default function PersonnelPage() {
           </p>
         </div>
 
-        {/* Add Personnel and Bulk Upload Buttons - For Admin */}
-        {canModify && user?.role === 'admin' && (
-          <div className="mb-6 lg:mb-8 flex flex-wrap gap-3">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Personnel
-            </button>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-5 h-5" />
-              Bulk Upload (Excel)
-            </button>
-          </div>
-        )}
-        
         {/* View-Only Notice for Personnel only */}
         {!canModify && (
-          <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/50 text-blue-300 rounded-lg">
+          <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/50 text-blue-300 rounded-lg flex-shrink-0">
             <p className="text-sm">
               📖 You are viewing personnel in read-only mode. Contact an administrator to make changes.
             </p>
@@ -1083,15 +1062,35 @@ export default function PersonnelPage() {
 
         {/* Error Display */}
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 whitespace-pre-line">
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 whitespace-pre-line flex-shrink-0">
             {error}
           </div>
         )}
 
-        {/* Search and Filter */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 mb-6 shadow-lg">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex-1">
+        {/* Search and Filter - Add button, search, filters in one row */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 mb-6 shadow-lg flex-shrink-0">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+            {canModify && user?.role === 'admin' && (
+              <>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer flex-shrink-0 order-first"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Personnel
+                </button>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 cursor-pointer flex-shrink-0"
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Bulk Upload (Excel)
+                </button>
+              </>
+            )}
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Search by name, army number, or rank..."
@@ -1103,7 +1102,7 @@ export default function PersonnelPage() {
                 className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 backdrop-blur-sm"
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
               <div className="relative">
                 <select
                   value={statusFilter}
@@ -1191,17 +1190,17 @@ export default function PersonnelPage() {
           </div>
         </div>
 
-        {/* Personnel Table */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden shadow-lg">
+        {/* Personnel Table - flex-1 for table scroll only, no page scroll */}
+        <div className="flex-1 min-h-0 flex flex-col bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden shadow-lg">
           {loading ? (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center flex-shrink-0">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
               <p className="text-white">Loading personnel data...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="flex-1 min-h-0 overflow-auto">
               <table className="w-full">
-                <thead className="bg-white/10">
+                <thead className="sticky top-0 z-10 bg-slate-800">
                   <tr>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">S.No</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Army No</th>
@@ -1294,6 +1293,15 @@ export default function PersonnelPage() {
               </table>
             </div>
           )}
+          {/* Pagination - inside table section */}
+          <Pagination
+            page={page}
+            limit={limit}
+            total={total}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+            className="mt-4 p-4 flex-shrink-0 border-t border-white/10"
+          />
         </div>
 
         {/* Actions dropdown - rendered via portal to escape table overflow */}
@@ -1351,44 +1359,6 @@ export default function PersonnelPage() {
             document.body
           );
         })()}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-gray-300 text-sm">
-              Showing {personnel.length} of {total} personnel
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 lg:px-4 py-2 rounded-lg text-sm cursor-pointer ${
-                    page === p
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white/10 text-white hover:bg-white/20 transition-colors'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 lg:px-4 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Mobile Overlay */}

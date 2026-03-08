@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
+import { Pagination } from "@/components/Pagination";
 import { api } from "@/lib/api";
 import { paginationConfig } from "@/config/pagination";
 import { config } from "@/config/env";
@@ -30,7 +31,7 @@ export default function DocsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
-  const [limit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export default function DocsPage() {
 
   useEffect(() => {
     fetchDocuments();
-  }, [page, searchTerm, selectedFilter]);
+  }, [page, limit, searchTerm, selectedFilter]);
 
   const fetchDocuments = async () => {
     try {
@@ -363,43 +364,15 @@ export default function DocsPage() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center mt-6">
-            <nav className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
-                if (pageNum > totalPages) return null;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md ${
-                      page === pageNum
-                        ? 'text-blue-600 bg-blue-50 border border-blue-300'
-                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </nav>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          limit={limit}
+          total={total}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
+          variant="light"
+          className="mt-6"
+        />
 
         {/* Upload Modal */}
         {uploadModalOpen && (

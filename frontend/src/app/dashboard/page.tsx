@@ -33,14 +33,14 @@ export default function Dashboard() {
   const { appName } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState([
-    { title: "Total Personnel", value: "0", change: "+8%", icon: Users, description: "Total Personnel", color: "from-indigo-500 to-indigo-600", categoryBreakdown: "00-00-00" },
-    { title: "Available Personnel", value: "0", change: "+5%", icon: CheckCircle2, description: "Available Personnel", color: "from-green-500 to-green-600" },
-    { title: "On ERE", value: "0", change: "+2", icon: Hospital, description: "On ERE", color: "from-orange-500 to-orange-600" },
-    { title: "On Leave", value: "0", change: "+3", icon: CalendarDays, description: "On Leave", color: "from-amber-500 to-amber-600" },
-    { title: "Out Station Employees", value: "0", change: "+0", icon: Briefcase, description: "Out Station Employment", color: "from-cyan-500 to-cyan-600" },
-    { title: "Active Courses", value: "0", change: "+3", icon: BookOpen, description: "Currently Running", color: "from-emerald-500 to-emerald-600" },
-    { title: "Pending Leave Requests", value: "0", change: "-5", icon: Clock, description: "Awaiting Approval", color: "from-rose-500 to-rose-600" },
-    { title: "Approved Leaves", value: "0", change: "+2", icon: FileCheck, description: "Recently Approved", color: "from-blue-500 to-blue-600" },
+    { title: "Total Personnel", value: "0", change: "+8%", icon: Users, description: "Total Personnel", color: "from-indigo-500 to-indigo-600", borderColor: "indigo-500", categoryBreakdown: "00-00-00" },
+    { title: "Available Personnel", value: "0", change: "+5%", icon: CheckCircle2, description: "Available Personnel", color: "from-green-500 to-green-600", borderColor: "green-500" },
+    { title: "On ERE", value: "0", change: "+2", icon: Hospital, description: "On ERE", color: "from-orange-500 to-orange-600", borderColor: "orange-500" },
+    { title: "On Leave", value: "0", change: "+3", icon: CalendarDays, description: "On Leave", color: "from-amber-500 to-amber-600", borderColor: "amber-500" },
+    { title: "Out Station Employees", value: "0", change: "+0", icon: Briefcase, description: "Out Station Employment", color: "from-cyan-500 to-cyan-600", borderColor: "cyan-500" },
+    { title: "Active Courses", value: "0", change: "+3", icon: BookOpen, description: "Currently Running", color: "from-emerald-500 to-emerald-600", borderColor: "emerald-500" },
+    { title: "Pending Leave Requests", value: "0", change: "-5", icon: Clock, description: "Awaiting Approval", color: "from-rose-500 to-rose-600", borderColor: "rose-500" },
+    { title: "Approved Leaves", value: "0", change: "+2", icon: FileCheck, description: "Recently Approved", color: "from-blue-500 to-blue-600", borderColor: "blue-500" },
   ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +115,7 @@ export default function Dashboard() {
               icon: Users, 
               description: totalPersonnel.description, 
               color: "from-indigo-500 to-indigo-600",
+              borderColor: "indigo-500",
               categoryBreakdown: totalPersonnel.categoryBreakdown || "00-00-00"
             },
             { 
@@ -124,6 +125,7 @@ export default function Dashboard() {
               icon: CheckCircle2, 
               description: availablePersonnel.description, 
               color: "from-green-500 to-green-600",
+              borderColor: "green-500",
               categoryBreakdown: availablePersonnel.categoryBreakdown || "00-00-00"
             },
             { 
@@ -132,7 +134,8 @@ export default function Dashboard() {
               change: onEREPersonnel.change, 
               icon: Hospital, 
               description: onEREPersonnel.description, 
-              color: "from-orange-500 to-orange-600"
+              color: "from-orange-500 to-orange-600",
+              borderColor: "orange-500"
             },
             { 
               title: "On Leave", 
@@ -140,7 +143,8 @@ export default function Dashboard() {
               change: onLeavePersonnel.change, 
               icon: CalendarDays, 
               description: onLeavePersonnel.description, 
-              color: "from-amber-500 to-amber-600" 
+              color: "from-amber-500 to-amber-600",
+              borderColor: "amber-500"
             },
             { 
               title: "Out Station Employees", 
@@ -148,7 +152,8 @@ export default function Dashboard() {
               change: outStationPersonnel?.change || "+0", 
               icon: Briefcase, 
               description: outStationPersonnel?.description || "Out Station Employment", 
-              color: "from-cyan-500 to-cyan-600" 
+              color: "from-cyan-500 to-cyan-600",
+              borderColor: "cyan-500"
             },
             ...((user?.role === 'admin' || user?.role === 'commander') && onCoursePersonnel ? [{
               title: "On Course",
@@ -156,7 +161,8 @@ export default function Dashboard() {
               change: onCoursePersonnel.change,
               icon: GraduationCap,
               description: onCoursePersonnel.description,
-              color: "from-sky-500 to-sky-600"
+              color: "from-sky-500 to-sky-600",
+              borderColor: "sky-500"
             }] : []),
             ...(user?.role === 'personnel' && myCourses ? [{
               title: "My Courses", 
@@ -164,14 +170,16 @@ export default function Dashboard() {
               change: myCourses.change, 
               icon: BookOpen, 
               description: myCourses.description, 
-              color: "from-emerald-500 to-emerald-600" 
+              color: "from-emerald-500 to-emerald-600",
+              borderColor: "emerald-500"
             }] : activeCourses ? [{
               title: "Active Courses", 
               value: activeCourses.count.toString(), 
               change: activeCourses.change, 
               icon: BookOpen, 
               description: activeCourses.description, 
-              color: "from-emerald-500 to-emerald-600" 
+              color: "from-emerald-500 to-emerald-600",
+              borderColor: "emerald-500"
             }] : []),
             { 
               title: "Pending Leave Requests", 
@@ -179,7 +187,8 @@ export default function Dashboard() {
               change: pendingRequests.change, 
               icon: Clock, 
               description: pendingRequests.description, 
-              color: "from-rose-500 to-rose-600" 
+              color: "from-rose-500 to-rose-600",
+              borderColor: "rose-500"
             },
             // { 
             //   title: "Approved Leaves", 
@@ -619,13 +628,25 @@ export default function Dashboard() {
                 <>
                   {stats.map((stat) => {
                     const isClickable = Boolean(statNavigationMap[stat.title]);
+                    const borderTopMap: Record<string, string> = {
+                      'indigo-500': 'border-t-indigo-500',
+                      'green-500': 'border-t-green-500',
+                      'orange-500': 'border-t-orange-500',
+                      'amber-500': 'border-t-amber-500',
+                      'cyan-500': 'border-t-cyan-500',
+                      'emerald-500': 'border-t-emerald-500',
+                      'rose-500': 'border-t-rose-500',
+                      'blue-500': 'border-t-blue-500',
+                      'sky-500': 'border-t-sky-500',
+                    };
+                    const borderTopClass = (stat.borderColor && borderTopMap[stat.borderColor]) || 'border-t-gray-500';
                     return (
                       <button
                         type="button"
                         key={stat.title}
                         onClick={() => handleStatCardClick(stat.title)}
                         disabled={!isClickable}
-                        className={`bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 hover:bg-white/10 transition-all duration-300 shadow-lg text-left w-full ${isClickable ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/60' : 'cursor-default'}`}
+                        className={`bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 border-t-4 p-4 lg:p-6 hover:bg-white/10 transition-all duration-300 shadow-lg text-left w-full ${borderTopClass} ${isClickable ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/60' : 'cursor-default'}`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">

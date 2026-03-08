@@ -515,6 +515,11 @@ class PersonnelService {
   async getPersonnelOthersData(personnelId: number) {
     return this.api.get(`/others/${personnelId}`);
   }
+
+  // Get current user's personal profile (for personnel role)
+  async getPersonalProfile() {
+    return this.api.get('/personnel/my-profile');
+  }
 }
 
 // Course Service (ViewModel)

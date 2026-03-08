@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { Pagination } from "@/components/Pagination";
 import { quickFiltersService, rankService, api } from "@/lib/api";
 import { Filter, Search, X, ChevronDown, ChevronUp, Download, Printer, Calendar, FileText } from "lucide-react";
 import { paginationConfig } from "@/config/pagination";
@@ -51,6 +52,7 @@ export default function QuickFiltersPage() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -131,11 +133,14 @@ export default function QuickFiltersPage() {
     fetchTradesmen();
   }, []);
 
-  // Only fetch when page changes (not on filter changes)
+  const hasActiveFilters = (companyId !== null) || (rankId !== null) || (platoonId !== null) || (tradesmanId !== null) || !!educationType || !!sportsEventName || !!bloodGroupFilter || !!statusFilter;
+
+  // Fetch when page or limit changes (after filters are applied)
   useEffect(() => {
-    // Don't auto-fetch on mount or filter changes
-    // Only fetch when page changes after filters are applied
-  }, [page]);
+    if (hasActiveFilters) {
+      fetchFilteredPersonnel();
+    }
+  }, [page, limit]);
 
   const fetchCompanies = async () => {
     try {
@@ -202,7 +207,7 @@ export default function QuickFiltersPage() {
 
       const params: any = {
         page,
-        limit: paginationConfig.DEFAULT_LIMIT
+        limit
       };
 
       if (companyId !== null) {
@@ -334,8 +339,6 @@ export default function QuickFiltersPage() {
     setPage(1);
     fetchFilteredPersonnel();
   };
-
-  const hasActiveFilters = (companyId !== null) || (rankId !== null) || (platoonId !== null) || (tradesmanId !== null) || educationType || sportsEventName || bloodGroupFilter || statusFilter;
 
   const handleDownloadCSV = async (downloadAll = false) => {
     let dataToExport = personnel;
@@ -931,29 +934,15 @@ export default function QuickFiltersPage() {
                     </div>
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="p-6 border-t border-white/20 flex items-center justify-between">
-                        <div className="text-sm text-gray-400">
-                          Page {page} of {totalPages}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                            className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <div className="p-6 border-t border-white/20">
+                      <Pagination
+                        page={page}
+                        limit={limit}
+                        total={total}
+                        onPageChange={setPage}
+                        onLimitChange={setLimit}
+                      />
+                    </div>
                   </>
                 )}
                 </div>
