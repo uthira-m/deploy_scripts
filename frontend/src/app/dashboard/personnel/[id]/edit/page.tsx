@@ -10,6 +10,7 @@ import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, personnelEducationService, personnelSportsService, medicalCategoryService, api } from "@/lib/api";
 import { validatePersonnelDob } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 
 interface Personnel {
   id: number;
@@ -594,7 +595,7 @@ export default function EditPersonnelPage() {
       if (company_id && parseInt(company_id) !== currentCompanyId) {
         try {
           // Assign to new company - backend updates existing record if personnel already has active assignment
-          const today = new Date().toISOString().split('T')[0];
+          const today = getServerDate().toISOString().split('T')[0];
           await api.post(`/company/${company_id}/personnel`, {
             personnel_id: parseInt(personnelId),
             role: 'Other',
@@ -632,7 +633,7 @@ export default function EditPersonnelPage() {
           // Validate date - cannot be future date
           if (sportsFormData.year_of_participation) {
             const participationDate = new Date(sportsFormData.year_of_participation);
-            const today = new Date();
+            const today = getServerDate();
             today.setHours(0, 0, 0, 0);
             
             if (participationDate > today) {

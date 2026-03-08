@@ -1,10 +1,12 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { personnelService, officersService, personnelJCOService } from "@/lib/api";
+import { Pagination } from "@/components/Pagination";
+import { allPersonnelService } from "@/lib/api";
+import { paginationConfig } from "@/config/pagination";
+import { calculateServiceDuration } from "@/lib/utils";
 
 interface Personnel {
   id: number;
@@ -44,21 +46,6 @@ interface Personnel {
   category?: string; // Added for unified view: 'OR', 'Officers', 'JCO'
 }
 
-const formatServiceDuration = (doe?: string) => {
-  if (!doe) return "-";
-  const startDate = new Date(doe);
-  if (Number.isNaN(startDate.getTime())) return "-";
-  const now = new Date();
-  let years = now.getFullYear() - startDate.getFullYear();
-  let months = now.getMonth() - startDate.getMonth();
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  if (years < 0) return "-";
-  return `${years}y ${months}m`;
-};
-
 const getCompanyNames = (person: Personnel) => {
   // API returns company_personnel with nested company
   const companies = person.company_personnel?.map((cp) => cp.company).filter((c) => c) || person.companies || [];
@@ -69,11 +56,13 @@ const getCompanyNames = (person: Personnel) => {
 export default function AllPersonnelPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
+  const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
+  const [total, setTotal] = useState(0);
   const searchParams = useSearchParams();
-  const { user } = useAuth();
 
   const statusOptions = ['Available', 'On Leave', 'On ERE', 'On Course', 'Out Station'];
 
@@ -99,95 +88,76 @@ export default function AllPersonnelPage() {
     }
   }, [searchParams]);
 
-  // Fetch all personnel from three sources
+  // Debounce search to avoid excessive API calls while typing
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
+
+  // Only fetch when filters are applied (status or search) - no API call on initial load
+  const hasActiveFilters = !!(statusFilter?.trim() || debouncedSearch?.trim());
+
+  useEffect(() => {
+    if (!hasActiveFilters) {
+      setAllPersonnel([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
     const fetchAllPersonnel = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // Fetch from all three APIs in parallel with large limits
-        const [personnelResponse, officersResponse, jcoResponse] = await Promise.all([
-          personnelService.getAllPersonnel(1, 1000, ""),
-          officersService.getAllOfficers(1, 1000, ""),
-          personnelJCOService.getAllPersonnel(1, 1000, "")
-        ]);
-
-        const combinedPersonnel: Personnel[] = [];
-
-        // Add OR personnel (personnel API excludes JCO)
-        if (personnelResponse.status === 'success' && personnelResponse.data?.personnel) {
-          const orPersonnel = personnelResponse.data.personnel.map((p: Personnel) => ({
-            ...p,
-            category: 'OR'
-          }));
-          combinedPersonnel.push(...orPersonnel);
+        const filters: Record<string, string> = {};
+        if (statusFilter && statusFilter.trim()) {
+          filters.status = statusFilter.trim();
         }
 
-        // Add Officers
-        if (officersResponse.status === 'success' && officersResponse.data?.personnel) {
-          const officers = officersResponse.data.personnel.map((p: Personnel) => ({
+        const response = await allPersonnelService.getAllPersonnel(
+          page,
+          limit,
+          debouncedSearch.trim(),
+          Object.keys(filters).length > 0 ? filters : undefined,
+          controller.signal
+        );
+
+        if (response.status === "success" && response.data) {
+          const personnel = (response.data.personnel || []).map((p: Personnel) => ({
             ...p,
-            category: 'Officers'
+            category: p.category || "OR",
           }));
-          combinedPersonnel.push(...officers);
+          setAllPersonnel(personnel);
+          const pag = (response.data as { pagination?: { total?: number } }).pagination;
+          setTotal(pag?.total ?? 0);
+        } else {
+          setAllPersonnel([]);
+          setTotal(0);
         }
-
-        // Add JCO personnel
-        if (jcoResponse.status === 'success' && jcoResponse.data?.personnel) {
-          const jcoPersonnel = jcoResponse.data.personnel.map((p: Personnel) => ({
-            ...p,
-            category: 'JCO'
-          }));
-          combinedPersonnel.push(...jcoPersonnel);
-        }
-
-        // Sort personnel by category hierarchy: Officers first, JCO second, OR third
-        const categoryOrder = { 'Officers': 1, 'JCO': 2, 'OR': 3 };
-        combinedPersonnel.sort((a, b) => {
-          const orderA = categoryOrder[a.category as keyof typeof categoryOrder] || 999;
-          const orderB = categoryOrder[b.category as keyof typeof categoryOrder] || 999;
-          return orderA - orderB;
-        });
-
-        setAllPersonnel(combinedPersonnel);
       } catch (err: any) {
-        if (err.message.includes('Authentication failed')) {
+        if (err.name === "AbortError") return;
+        if (err.message?.includes("Authentication failed")) {
           setError("Session expired. Please login again.");
         } else {
           setError(err.message || "Failed to fetch personnel data");
         }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchAllPersonnel();
-  }, []);
-
-  const filteredPersonnel = useMemo(() => {
-    return allPersonnel.filter((person) => {
-      const statusValue = getDisplayStatus(person);
-      const normalizedFilter = statusFilter.trim().toLowerCase();
-      const normalizedStatus = (statusValue || '').trim().toLowerCase();
-      const matchesStatusFilter =
-        !normalizedFilter ||
-        (normalizedFilter === 'out station'
-          ? normalizedStatus.includes('out station')
-          : normalizedStatus === normalizedFilter);
-
-      const companyNames = getCompanyNames(person);
-      const matchesSearch =
-        (person.name && person.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (person.army_no && person.army_no.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (person.rank && person.rank.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (person.service && person.service.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (person.rankInfo?.name && person.rankInfo.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (companyNames !== "-" && companyNames.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      return matchesSearch && matchesStatusFilter;
-    });
-  }, [allPersonnel, searchTerm, statusFilter]);
+    return () => controller.abort();
+  }, [page, limit, debouncedSearch, statusFilter]);
 
   return (
     <ProtectedRoute>
@@ -239,7 +209,7 @@ export default function AllPersonnelPage() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="w-full sm:w-auto px-4 py-2 pr-10 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none backdrop-blur-sm"
                 >
-                  <option value="">All Status</option>
+                  {/* <option value="">All Status</option> */}
                   {statusOptions.map((status) => (
                     <option key={status} value={status}>
                       {status}
@@ -268,7 +238,11 @@ export default function AllPersonnelPage() {
               <p className="text-gray-400">Loading personnel data...</p>
             </div>
           </div>
-        ) : filteredPersonnel.length === 0 ? (
+        ) : !hasActiveFilters ? (
+          <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-8 text-center">
+            <p className="text-gray-400">Apply a status filter or search to view personnel.</p>
+          </div>
+        ) : allPersonnel.length === 0 ? (
           <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-8 text-center">
             <p className="text-gray-400">No personnel found matching your criteria.</p>
           </div>
@@ -278,20 +252,21 @@ export default function AllPersonnelPage() {
               <table className="w-full">
                 <thead className="bg-white/10">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">S.No</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Category</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Army No</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rank</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Service</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Course Name</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">S.No</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Army No</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Rank</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Company</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Course Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300  tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {filteredPersonnel.map((person, index) => {
+                  {allPersonnel.map((person, index) => {
+                    const serialNo = (page - 1) * limit + index + 1;
                     const statusValue = getDisplayStatus(person);
                     const badgeClass =
                       statusValue === 'Available'
@@ -315,7 +290,7 @@ export default function AllPersonnelPage() {
 
                     return (
                       <tr key={`${person.category}-${person.id}`} className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-300">{index + 1}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{serialNo}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${categoryBadgeClass}`}>
                             {person.category || 'OR'}
@@ -324,7 +299,7 @@ export default function AllPersonnelPage() {
                         <td className="px-4 py-3 text-sm text-gray-300">{person.army_no || '-'}</td>
                         <td className="px-4 py-3 text-sm text-white">{person.name || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-300">{person.rankInfo?.name || person.rank || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-300">{formatServiceDuration(person.doe)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{calculateServiceDuration(person.doe || "")}</td>
                         <td className="px-4 py-3 text-sm text-gray-300">{getCompanyNames(person)}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`px-2 py-1 rounded text-xs ${badgeClass}`}>
@@ -352,13 +327,15 @@ export default function AllPersonnelPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {/* Results Count */}
-        {!loading && (
-          <div className="mt-4 text-gray-300 text-sm">
-            Showing {filteredPersonnel.length} of {allPersonnel.length} personnel
+            {/* Pagination */}
+            <Pagination
+              page={page}
+              limit={limit}
+              total={total}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+              className="mt-4 p-4 flex-shrink-0 border-t border-white/10"
+            />
           </div>
         )}
       </div>

@@ -59,26 +59,28 @@ const corpsSubColumns = [
   { key: "total_27_34", label: "Total (25-32)", pdfLabel: "TOTAL (25-32)", colNum: 33 },
 ];
 
-// Short labels for PDF trade columns (matches reference layout)
+// Short single-line labels for PDF header (readable without wrapping)
 const TRADE_PDF_LABELS: Record<string, string> = {
   clerk: "Clerk",
-  "clerk (sd)": "Clerk",
+  "clerk (sd)": "Clk (SD)",
   chef: "Chef",
-  communicator: "Sp Staff (ER)",
-  "specialist staff (er)": "Sp Staff (ER)",
+  communicator: "Sp ER",
+  "specialist staff (er)": "Sp ER",
   dresser: "Dresser",
   painter: "Ptr",
   tailor: "Tailor",
   washerman: "W/M",
-  housekeeper: "House Keeper",
-  "house keeper": "House Keeper",
+  housekeeper: "H.Keeper",
+  "house keeper": "H.Keeper",
   equipment: "EQPT",
   "mess chef": "Chef Mess",
-  "mess keeper": "Mess Keeper",
+  "mess keeper": "Mess Keep",
   steward: "STW",
   artisan: "Artisan",
   "m/ck spl": "M/ck SPL",
   "rt jco": "RT JCO",
+  community: "Comm",
+  "gain community chef": "Comm Chef",
 };
 
 export default function ParadeStatePage() {
@@ -150,22 +152,20 @@ export default function ParadeStatePage() {
 
     const getTradePdfLabel = (name: string) => {
       const key = name.toLowerCase().trim();
-      return TRADE_PDF_LABELS[key] ?? name.length > 10 ? name.slice(0, 10) : name;
+      return TRADE_PDF_LABELS[key] ?? name;
     };
 
+    // Single-line header labels (short so they don't wrap in PDF)
     const headRow1 = [
-      "DETAILS",
-      ...rankColumns.map((c) => c.pdfLabel),
+      "Details",
+      ...rankColumns.map((c) =>
+        c.key === "total_2_10" ? "Total 2-10" : c.pdfLabel
+      ),
       ...tradesmen.map((t) => getTradePdfLabel(t.trade_name)),
-      "TOTAL (12 to 23)",
-      ...corpsSubColumns.map((c) => c.pdfLabel),
-    ];
-    const headRow2 = [
-      "1",
-      ...rankColumns.map((c) => (c.key === "total_2_10" ? "2-10" : String(c.colNum))),
-      ...tradesmen.map((_, i) => String(12 + i)),
-      "12-23",
-      ...corpsSubColumns.map((c) => (c.key === "total_27_34" ? "25-32" : String(c.colNum))),
+      "Total 12-23",
+      ...corpsSubColumns.map((c) =>
+        c.key === "total_27_34" ? "Total 25-32" : c.key === "amc_nursing_asst" ? "Nurs Asst" : c.pdfLabel
+      ),
     ];
     const colKeys = [
       "Details",
@@ -195,59 +195,35 @@ export default function ParadeStatePage() {
     }
 
     autoTable(doc, {
-      head: [headRow1, headRow2],
+      head: [headRow1],
       body,
       startY: 20,
       tableWidth,
       margin: { left: margin, right: margin },
-      styles: { fontSize: 8, cellPadding: 1 },
+      styles: { fontSize: 8, cellPadding: 2 },
       headStyles: {
-        fillColor: [245, 247, 250],
-        textColor: [30, 41, 59],
+        fillColor: [44, 62, 80],
+        textColor: [255, 255, 255],
         fontStyle: "bold",
+        fontSize: 7,
         halign: "center",
         valign: "middle",
-        cellPadding: 1,
-        minCellHeight: 32,
+        cellPadding: 2,
+        minCellHeight: 8,
       },
       bodyStyles: { halign: "center", valign: "middle", textColor: [30, 41, 59] },
       columnStyles,
-      alternateRowStyles: { fillColor: [252, 253, 254] },
+      alternateRowStyles: { fillColor: [255, 255, 255] },
       theme: "grid",
       tableLineColor: [220, 220, 220],
       tableLineWidth: 0.2,
       didParseCell: (data) => {
-        if (data.section === "head") {
-          if (data.row.index === 0 && data.column.index > 0) {
-            (data.cell as { rotatedText?: string }).rotatedText = data.cell.text;
-            data.cell.text = "";
-          }
-          if (data.row.index === 1) {
-            data.cell.styles.fontSize = 6;
-            data.cell.styles.fontStyle = "normal";
-            data.cell.styles.cellPadding = 0.5;
-            data.cell.styles.minCellHeight = 6;
-          }
-          if (data.row.index === 0) {
-            data.cell.styles.minCellHeight = 28;
-          }
+        if (data.section === "head" && data.column.index === 0) {
+          data.cell.styles.halign = "left";
         }
-      },
-      didDrawCell: (data) => {
-        const cell = data.cell as { rotatedText?: string };
-        if (
-          data.section === "head" &&
-          data.row.index === 0 &&
-          data.column.index > 0 &&
-          cell.rotatedText
-        ) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(7);
-          doc.setTextColor(30, 41, 59);
-          const cx = data.cell.x + data.cell.width / 2;
-          const pad = 2;
-          const anchorY = data.cell.y + data.cell.height - pad;
-          doc.text(cell.rotatedText, cx, anchorY, { angle: 90, align: "center" });
+        if (data.section === "body" && data.column.index === 0) {
+          data.cell.styles.fillColor = [245, 245, 245];
+          data.cell.styles.halign = "left";
         }
       },
     });
@@ -265,12 +241,12 @@ export default function ParadeStatePage() {
               Parade State
             </h1>
             <p className="text-gray-400 mt-1">
-              Personnel strength and status (dynamic data from database)
+              Personnel strength and status
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-400" />
+              {/* <Calendar className="w-5 h-5 text-gray-400" /> */}
               <input
                 type="date"
                 value={selectedDate}

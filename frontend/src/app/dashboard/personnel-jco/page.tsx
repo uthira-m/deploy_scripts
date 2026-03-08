@@ -12,6 +12,7 @@ import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelJCOService, personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
 import { validatePersonnelDob } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { paginationConfig } from "@/config/pagination";
 import { MoreVertical, Eye, Trash2, KeyRound } from "lucide-react";
 
@@ -726,7 +727,7 @@ export default function PersonnelJCOPage() {
     if (!doe) return "-";
     const startDate = new Date(doe);
     if (Number.isNaN(startDate.getTime())) return "-";
-    const now = new Date();
+    const now = getServerDate();
     let years = now.getFullYear() - startDate.getFullYear();
     let months = now.getMonth() - startDate.getMonth();
     if (months < 0) {

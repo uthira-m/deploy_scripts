@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { personnelService } from "@/lib/api";
 import { formatDateShort } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useNotification } from "@/contexts/NotificationContext";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
@@ -74,7 +75,7 @@ const MyFamilyDetailsPage = () => {
   const validateDateOfBirth = (value: string) => {
     if (value) {
       const selectedDate = new Date(value);
-      const today = new Date();
+      const today = getServerDate();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
 
       if (selectedDate > today) {
@@ -230,7 +231,7 @@ const MyFamilyDetailsPage = () => {
   const calculateAge = (dob: string | undefined): number | null => {
     if (!dob) return null;
     const birthDate = new Date(dob);
-    const today = new Date();
+    const today = getServerDate();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {

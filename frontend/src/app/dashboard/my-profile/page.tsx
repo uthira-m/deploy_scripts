@@ -7,6 +7,7 @@ import { api, personnelService, personnelSportsService } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { config } from '@/config/env';
 import { formatDateShort } from '@/lib/utils';
+import { getServerDate } from '@/lib/serverTime';
 import { X, Download, Trophy, Lightbulb } from 'lucide-react';
 
 interface Profile {
@@ -458,7 +459,7 @@ export default function MyProfilePage() {
   const calculateAge = (dob?: string): number => {
     if (!dob) return 0;
     const birthDate = new Date(dob);
-    const today = new Date();
+    const today = getServerDate();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -470,7 +471,7 @@ export default function MyProfilePage() {
   const calculateService = (doe?: string): string => {
     if (!doe) return 'N/A';
     const entryDate = new Date(doe);
-    const today = new Date();
+    const today = getServerDate();
     const years = today.getFullYear() - entryDate.getFullYear();
     const months = today.getMonth() - entryDate.getMonth();
     

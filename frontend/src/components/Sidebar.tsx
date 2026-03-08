@@ -155,9 +155,9 @@ export default function Sidebar() {
         </div>
         
         <div className="sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
-          {!isCollapsed && (
+          {/* {!isCollapsed && (
             <div className="mb-2 px-2 text-xs text-gray-400 font-semibold uppercase tracking-wider">Menu</div>
-          )}
+          )} */}
           <nav className="flex flex-col gap-1 mb-6">
             {(() => {
               // Determine which menu to show based on user role
@@ -217,10 +217,14 @@ export default function Sidebar() {
                   // View Reports
                   (link.href === '/dashboard/view-report' && pathname.startsWith('/dashboard/view-report'));
                 
+                // Disable prefetch for personnel list pages to avoid redundant API calls when viewing all-personnel
+                const noPrefetchHrefs = ['/dashboard/personnel', '/dashboard/officers', '/dashboard/personnel-jco'];
+                const shouldPrefetch = !noPrefetchHrefs.includes(link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={shouldPrefetch}
                     onClick={closeMobileMenu}
                     className={`flex items-center gap-3 py-3 rounded-xl font-medium transition-all duration-150 ${
                       isCollapsed ? 'justify-center px-2' : 'px-4'
@@ -241,7 +245,7 @@ export default function Sidebar() {
               });
             })()}
           </nav>
-          <div className="border-t border-white/10" />
+          {/* <div className="border-t border-white/10" /> */}
           {/* <div className="mb-2 px-2 text-xs text-gray-400 font-semibold uppercase tracking-wider">Other</div> */}
           {/* <nav className="flex flex-col gap-1">
             {otherLinks.map(link => (

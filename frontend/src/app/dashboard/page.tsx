@@ -837,7 +837,7 @@ export default function Dashboard() {
               {/* Image Carousel with Army Animations */}
               <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 transition-all duration-300 shadow-lg flex flex-col min-h-[400px]">
               {imagesLoading ? (
-                <div className="relative rounded-xl border border-white/10 w-full h-[400px] flex items-center justify-center bg-white/5">
+                <div className="relative rounded-xl border border-white/10 w-full h-[400px] flex items-center justify-center ">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
                     <p className="text-gray-400 text-sm">Loading images...</p>
@@ -925,8 +925,8 @@ export default function Dashboard() {
                   )}
                 </div>
               ) : (
-                <div className="relative rounded-xl border border-white/10 w-full h-[320px] flex flex-col items-center justify-center bg-white/5">
-                   <div className="relative w-40 h-40 mx-auto mb-4">
+                <div className="relative rounded-xl  w-full h-[400px] flex flex-col items-center justify-center">
+                   <div className="relative w-40 h-40 mx-auto ">
                           {/* Empty Pie Chart Circle - Outer Ring */}
                           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                             {/* Background circle */}
@@ -963,7 +963,7 @@ export default function Dashboard() {
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-3 h-3 rounded-full bg-blue-400/60 animate-pulse" style={{ animationDelay: '1s' }}></div>
                           <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-3 h-3 rounded-full bg-blue-400/60 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
                         </div>
-                  <p className="text-gray-300 font-semibold text-base mb-3">No dashboard images available</p>
+                  <p className="text-gray-300 font-semibold text-base mt-3">No dashboard images available</p>
                 </div>
               )}
               </div>

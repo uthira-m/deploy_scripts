@@ -144,9 +144,9 @@ class ApiService {
     }
   }
 
-  // GET request
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  // GET request - optional signal for abort/cancel (e.g. to prevent duplicate calls from React Strict Mode)
+  async get<T>(endpoint: string, options?: { signal?: AbortSignal }): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'GET', signal: options?.signal });
   }
 
   // POST request
@@ -519,6 +519,24 @@ class PersonnelService {
   // Get current user's personal profile (for personnel role)
   async getPersonalProfile() {
     return this.api.get('/personnel/my-profile');
+  }
+}
+
+// All Personnel Service - unified Officers + JCO + OR with server-side filters
+class AllPersonnelService {
+  private api: ApiService;
+
+  constructor() {
+    this.api = new ApiService(API_BASE_URL);
+  }
+
+  async getAllPersonnel(page: number = 1, limit: number = 1000, search: string = '', filters?: Record<string, unknown>, signal?: AbortSignal) {
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    if (search && search.trim()) params.set('search', search.trim());
+    if (filters && Object.keys(filters).length > 0) params.set('filters', JSON.stringify(filters));
+    return this.api.get(`/all-personnel?${params.toString()}`, { signal });
   }
 }
 
@@ -1329,6 +1347,7 @@ class WhatsNewService {
 // Export service instances
 export const authService = new AuthService();
 export const personnelService = new PersonnelService();
+export const allPersonnelService = new AllPersonnelService();
 export const officersService = new OfficersService();
 export const adminsService = new AdminsService();
 export const personnelJCOService = new PersonnelJCOService();
@@ -1403,6 +1422,31 @@ export async function downloadBackup(filename: string): Promise<void> {
 
 // Export the base API service for direct use
 export const api = new ApiService(API_BASE_URL);
+
+// Server time - for year calculations using server date/time (no auth required)
+export interface ServerTimeResponse {
+  serverTime: string;
+  timezone: string;
+}
+
+export async function getServerTime(): Promise<{
+  success: boolean;
+  serverTime?: string;
+  message?: string;
+}> {
+  try {
+    const res = await api.get<ServerTimeResponse>('/server-time');
+    if (res.status === 'success' && res.data?.serverTime) {
+      return { success: true, serverTime: res.data.serverTime };
+    }
+    return { success: false, message: res.message || 'Failed to get server time' };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Network error',
+    };
+  }
+}
 
 // Static administrator login (no DB, hardcoded credentials in API)
 export const ADMIN_STATIC_TOKEN_KEY = 'ipmas_static_admin_token';

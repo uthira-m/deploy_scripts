@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getAppSettings, updateAppSettings } from "@/lib/api";
-import { config } from "@/config/env";
+import { fetchAndCacheServerTime } from "@/lib/serverTime";
 
 const DEFAULT_APP_NAME = "IPMAS";
 const DEFAULT_LOGO_PATH = "/assets/logo.png"; // Fallback to assets folder
@@ -27,8 +27,12 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await getAppSettings();
-      if (result.success && result.settings) {
+      // Fetch app settings and server time in parallel (server time for year calculations)
+      const [result] = await Promise.all([
+        getAppSettings(),
+        fetchAndCacheServerTime(),
+      ]);
+      if (result?.success && result?.settings) {
         setAppNameState(result.settings.app_name || DEFAULT_APP_NAME);
         // Use server logo URL if available, otherwise fallback to assets
         setAppLogoUrlState(

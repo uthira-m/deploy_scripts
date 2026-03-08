@@ -2,8 +2,11 @@
  * Utility functions for the application
  */
 
+import { getServerDate } from './serverTime';
+
 /**
- * Calculate service duration from date of entry
+ * Calculate service duration from date of entry.
+ * Uses server date/time for year calculations.
  * @param doeString - Date of entry as string
  * @returns Formatted service duration string (e.g., "25 yrs 6 months" or "8 months")
  */
@@ -11,7 +14,7 @@ export const calculateServiceDuration = (doeString: string): string => {
   if (!doeString) return '--';
   
   const doe = new Date(doeString);
-  const today = new Date();
+  const today = getServerDate();
   
   let years = today.getFullYear() - doe.getFullYear();
   let months = today.getMonth() - doe.getMonth();
@@ -84,7 +87,7 @@ export const formatDateShort = (dateString: string | undefined | null): string =
 export const validatePersonnelDob = (value: string): string => {
   if (!value) return '';
   const birthDate = new Date(value);
-  const today = new Date();
+  const today = getServerDate();
   if (isNaN(birthDate.getTime())) return 'Invalid date';
   if (birthDate > today) return 'Date of birth cannot be in the future';
   let age = today.getFullYear() - birthDate.getFullYear();

@@ -12,6 +12,7 @@ import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
 import { calculateServiceDuration, validatePersonnelDob } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { paginationConfig } from "@/config/pagination";
 import { Upload, FileSpreadsheet, FileCheck, X, Clock, AlertCircle, MoreVertical, Eye, Trash2, KeyRound } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -914,7 +915,7 @@ export default function PersonnelPage() {
               errors.push({ row: rowNum, armyNo, field: "doe", error: "Invalid Date Of Entry format (use DD-MM-YYYY)" });
               continue;
             }
-            if (doe > new Date()) {
+            if (doe > getServerDate()) {
               errors.push({ row: rowNum, armyNo, field: "doe", error: "Date Of Entry cannot be in the future" });
               continue;
             }

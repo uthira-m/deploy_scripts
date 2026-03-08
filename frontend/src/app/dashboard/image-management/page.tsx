@@ -136,8 +136,8 @@ export default function ImageManagementPage() {
       notifyError(`"${file.name}" is not an image file`);
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      notifyError(`"${file.name}" exceeds 10MB size limit`);
+    if (file.size > 20 * 1024 * 1024) {
+      notifyError(`"${file.name}" exceeds 20MB size limit`);
       return;
     }
     const folder = position === 'left' ? 'login-left' : 'login-right';
@@ -168,11 +168,6 @@ export default function ImageManagementPage() {
       return;
     }
 
-    // Other folders: max 10 at a time
-    if (fileArray.length > 10) {
-      setError('Maximum 10 images can be uploaded at a time');
-      return;
-    }
     const isWhatsNew = selectedFolder === 'whats-new';
 
     if (isWhatsNew) {
@@ -193,6 +188,14 @@ export default function ImageManagementPage() {
         }
       }
     } else {
+      // Dashboard: max 10 images total
+      if (selectedFolder === 'dashboard') {
+        const currentCount = dashboardImages.length;
+        if (currentCount + fileArray.length > 10) {
+          setError(`Maximum 10 images allowed for dashboard. You have ${currentCount} image(s). Delete some before uploading more.`);
+          return;
+        }
+      }
       if (fileArray.length > 10) {
         setError('Maximum 10 images can be uploaded at a time');
         return;
@@ -202,8 +205,8 @@ export default function ImageManagementPage() {
           setError(`File "${file.name}" is not an image file`);
           return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-          setError(`File "${file.name}" exceeds 10MB size limit`);
+        if (file.size > 20 * 1024 * 1024) {
+          setError(`File "${file.name}" exceeds 20MB size limit`);
           return;
         }
       }
@@ -396,7 +399,7 @@ export default function ImageManagementPage() {
                 >
                   {uploading ? <Loader2 className="w-10 h-10 text-blue-400 animate-spin" /> : <Upload className="w-10 h-10 text-gray-400" />}
                   <span className="text-white font-medium text-sm">Click to upload left image</span>
-                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 10MB</span>
+                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 20MB</span>
                 </label>
               </div>
               <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
@@ -416,7 +419,7 @@ export default function ImageManagementPage() {
                 >
                   {uploading ? <Loader2 className="w-10 h-10 text-blue-400 animate-spin" /> : <Upload className="w-10 h-10 text-gray-400" />}
                   <span className="text-white font-medium text-sm">Click to upload right image</span>
-                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 10MB</span>
+                  <span className="text-gray-400 text-xs">PNG, JPG, GIF up to 20MB</span>
                 </label>
               </div>
             </div>
@@ -432,9 +435,11 @@ export default function ImageManagementPage() {
                     Uploading to: {selectedFolder === 'whats-new' ? "What's New" : selectedFolder === 'dashboard' ? 'Dashboard' : 'Personnel'}
                   </span>
                 </div>
+                {selectedFolder === 'dashboard' && (
                 <div className="px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg">
-                  <span className="text-amber-400 text-sm font-medium">Max 10 images</span>
+                  <span className="text-amber-400 text-sm font-medium">Max 10 images total</span>
                 </div>
+                )}
               </div>
             </div>
             <div
@@ -443,9 +448,11 @@ export default function ImageManagementPage() {
               onDragOver={handleDrag}
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
-                dragActive
-                  ? 'border-blue-500 bg-blue-500/10'
-                  : 'border-white/20 hover:border-white/40'
+                selectedFolder === 'dashboard' && dashboardImages.length >= 10
+                  ? 'border-white/10 opacity-60 cursor-not-allowed'
+                  : dragActive
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-white/20 hover:border-white/40'
               }`}
             >
               <input
@@ -455,7 +462,7 @@ export default function ImageManagementPage() {
                 onChange={(e) => handleFileSelect(e.target.files)}
                 className="hidden"
                 id="file-upload"
-                disabled={uploading}
+                disabled={uploading || (selectedFolder === 'dashboard' && dashboardImages.length >= 10)}
               />
               <label
                 htmlFor="file-upload"
@@ -488,6 +495,14 @@ export default function ImageManagementPage() {
                       </p>
                     </div>
                   </>
+                ) : selectedFolder === 'dashboard' && dashboardImages.length >= 10 ? (
+                  <>
+                    <Upload className="w-12 h-12 text-gray-400" />
+                    <div>
+                      <p className="text-amber-400 font-medium mb-1">Dashboard limit reached (10 images)</p>
+                      <p className="text-gray-400 text-sm">Delete an image to upload more</p>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <Upload className="w-12 h-12 text-gray-400" />
@@ -496,10 +511,10 @@ export default function ImageManagementPage() {
                         Click to upload or drag and drop
                       </p>
                       <p className="text-gray-400 text-sm mb-1">
-                        PNG, JPG, GIF up to 10MB per file
+                        PNG, JPG, GIF up to 20MB per file
                       </p>
                       <p className="text-blue-400 text-sm font-medium">
-                        Maximum 10 images at a time
+                        {selectedFolder === 'dashboard' ? 'Maximum 10 images total' : 'Maximum 10 images at a time'}
                       </p>
                     </div>
                   </>

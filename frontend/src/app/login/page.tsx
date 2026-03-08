@@ -478,6 +478,24 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Marquee - Full width developer credit */}
+      <div
+        className={`login-marquee-wrapper transition-opacity duration-500 ${
+          animationStage === "complete" ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="login-marquee-track">
+          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+          <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
+          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+          <span className="login-marquee-separator" aria-hidden>✦</span>
+          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+          <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
+          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+          <span className="login-marquee-separator" aria-hidden>✦</span>
+        </div>
+      </div>
     </main>
   );
 }

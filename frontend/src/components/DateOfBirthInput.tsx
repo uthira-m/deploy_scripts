@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
+import { getServerDate } from "@/lib/serverTime";
 
 interface DateOfBirthInputProps {
   value: string;
@@ -46,9 +47,9 @@ export default function DateOfBirthInput({
     return d.toISOString().split("T")[0];
   }, [minAge]);
 
-  // Calculate min date (oldest allowed = maxAge years ago, or 100 if no maxAge)
+  // Calculate min date (oldest allowed = maxAge years ago, or 100 if no maxAge). Uses server date.
   const minDate = useMemo(() => {
-    const today = new Date();
+    const today = getServerDate();
     const yearsBack = maxAge ?? 100;
     const d = new Date(today.getFullYear() - yearsBack, today.getMonth(), today.getDate());
     return d.toISOString().split("T")[0];
@@ -67,7 +68,7 @@ export default function DateOfBirthInput({
       return;
     }
     const selected = new Date(dateValue);
-    const today = new Date();
+    const today = getServerDate();
     let age = today.getFullYear() - selected.getFullYear();
     const monthDiff = today.getMonth() - selected.getMonth();
     const dayDiff = today.getDate() - selected.getDate();

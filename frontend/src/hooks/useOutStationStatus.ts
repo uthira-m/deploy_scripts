@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { personnelService } from "@/lib/api";
 import { config } from "@/config/env";
+import { getServerDate } from "@/lib/serverTime";
 
 interface OutStationLike {
   start_date?: string;
@@ -10,7 +11,7 @@ interface OutStationLike {
 const isCurrentlyOutStation = (outStations: OutStationLike[]) => {
   if (!outStations || outStations.length === 0) return false;
 
-  const now = new Date();
+  const now = getServerDate();
   return outStations.some((outStation) => {
     if (!outStation.start_date) return false;
 

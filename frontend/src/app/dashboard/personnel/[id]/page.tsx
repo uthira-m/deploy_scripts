@@ -4328,11 +4328,19 @@ export default function PersonnelDetailsPage() {
                             </p>
                           </div>
                         </div>
-                        <div>
-                          <p className="profile-field-label">DSP Account</p>
-                          <p className="profile-field-value">
-                            {personnel.dsp_account || "Not specified"}
-                          </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <p className="profile-field-label">DSP Account</p>
+                            <p className="profile-field-value">
+                              {personnel.dsp_account || "Not specified"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="profile-field-label">Phone</p>
+                            <p className="profile-field-value">
+                              {personnel.phone || "Not specified"}
+                            </p>
+                          </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>

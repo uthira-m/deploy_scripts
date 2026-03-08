@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { leaveService } from '@/lib/api';
+import { leaveService, allPersonnelService } from '@/lib/api';
+import * as XLSX from 'xlsx';
 import { Pagination } from '@/components/Pagination';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase, Trash2 } from 'lucide-react';
+import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase, Trash2, Plus } from 'lucide-react';
 import { paginationConfig } from '@/config/pagination';
 
 interface LeaveType {
@@ -63,6 +64,13 @@ interface LeaveBalance {
   usedDays: number;
   remainingDays: number;
   percentage: number;
+}
+
+interface PersonnelOption {
+  id: number;
+  army_no: string;
+  name: string;
+  rank?: string;
 }
 
 // Static leave types data
@@ -124,10 +132,18 @@ export default function LeaveManagementPage() {
   // Form states
   const [formData, setFormData] = useState({
     leave_type_id: '',
+    personnel_id: '',
     startDate: '',
     endDate: '',
     reason: ''
   });
+  const [personnelOptions, setPersonnelOptions] = useState<PersonnelOption[]>([]);
+  const [loadingPersonnel, setLoadingPersonnel] = useState(false);
+  const [personnelSearch, setPersonnelSearch] = useState('');
+  const [personnelDropdownOpen, setPersonnelDropdownOpen] = useState(false);
+  const [personnelSearchDebounced, setPersonnelSearchDebounced] = useState('');
+  const [selectedPersonnelDisplay, setSelectedPersonnelDisplay] = useState('');
+  const [selectedPersonnelArmyNo, setSelectedPersonnelArmyNo] = useState('');
 
   // Extension form states
   const [extensionData, setExtensionData] = useState({
@@ -174,6 +190,35 @@ export default function LeaveManagementPage() {
     };
     fetchLeaveTypes();
   }, []);
+
+  // Debounce personnel search
+  useEffect(() => {
+    const timer = setTimeout(() => setPersonnelSearchDebounced(personnelSearch), 300);
+    return () => clearTimeout(timer);
+  }, [personnelSearch]);
+
+  // Load personnel for admin when Add Leave modal opens - search by free text
+  useEffect(() => {
+    if (!showCreateModal || user?.role !== 'admin') return;
+    const fetchPersonnel = async () => {
+      setLoadingPersonnel(true);
+      try {
+        const response = await allPersonnelService.getAllPersonnel(1, 50, personnelSearchDebounced.trim());
+        if (response?.status === 'success' && response.data) {
+          const personnel = (response.data as { personnel?: PersonnelOption[] }).personnel || [];
+          setPersonnelOptions(personnel);
+        } else {
+          setPersonnelOptions([]);
+        }
+      } catch (error) {
+        console.error('Error fetching personnel:', error);
+        setPersonnelOptions([]);
+      } finally {
+        setLoadingPersonnel(false);
+      }
+    };
+    fetchPersonnel();
+  }, [showCreateModal, user?.role, personnelSearchDebounced]);
 
   // Sync filtered requests with allRequests (leave type filter is now applied by backend API)
   useEffect(() => {
@@ -315,30 +360,72 @@ export default function LeaveManagementPage() {
 
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user?.role === 'admin') {
+      if (!formData.personnel_id || !selectedPersonnelArmyNo) {
+        showError('Please select personnel');
+        return;
+      }
+      try {
+        // Use bulk upload API: create Excel with one row and upload
+        const wsData = [
+          ['army_no', 'leave_type_id', 'start_date', 'end_date', 'reason'],
+          [selectedPersonnelArmyNo, formData.leave_type_id, formData.startDate, formData.endDate, formData.reason]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Leaves');
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const file = new File([excelBuffer], 'add_leave.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+        const response = await leaveService.bulkUploadPastLeaves(file);
+        const data = (response as { data?: { successful?: number; errors?: number; details?: { errors?: Array<{ error?: string; message?: string }> } } }).data;
+        if (data?.errors && data.errors > 0) {
+          const errList = data.details?.errors || [];
+          const firstErr = errList[0];
+          const errMsg = typeof firstErr === 'string' ? firstErr : (firstErr?.error || firstErr?.message);
+          showError(errMsg || 'Failed to add leave');
+          return;
+        }
+        setShowCreateModal(false);
+        setFormData({ leave_type_id: '', personnel_id: '', startDate: '', endDate: '', reason: '' });
+        setPersonnelSearch('');
+        setSelectedPersonnelDisplay('');
+        setSelectedPersonnelArmyNo('');
+        loadData();
+        showSuccess('Leave added successfully!');
+      } catch (error: any) {
+        console.error('Error adding leave:', error);
+        const errMsg = error?.response?.data?.message || error?.message || 'Failed to add leave';
+        showError(errMsg);
+      }
+      return;
+    }
+
+    // Personnel/Commander: use createLeaveRequest (not used in Leave Management - modal is admin-only)
     try {
-      // Send only required fields to backend
       const requestData = {
         leave_type_id: parseInt(formData.leave_type_id),
         start_date: formData.startDate,
         end_date: formData.endDate,
         reason: formData.reason
       };
-      
-      await leaveService.createLeaveRequest(requestData);
+      const response = await leaveService.createLeaveRequest(requestData);
+      const success = (response as { success?: boolean }).success ?? (response as { status?: string }).status === 'success';
+      if (!success) {
+        const msg = (response as { message?: string }).message || 'Failed to create leave request';
+        showError(msg);
+        return;
+      }
       setShowCreateModal(false);
-      setFormData({
-        leave_type_id: '',
-        startDate: '',
-        endDate: '',
-        reason: ''
-      });
+      setFormData({ leave_type_id: '', personnel_id: '', startDate: '', endDate: '', reason: '' });
+      setPersonnelSearch('');
+      setSelectedPersonnelDisplay('');
       loadData();
       showSuccess('Leave request submitted successfully!');
     } catch (error: any) {
       console.error('Error creating leave request:', error);
       const errorMessage = error?.message || 'Failed to create leave request';
       showError(errorMessage);
-      // Show alert for conflict errors
       if (errorMessage.includes("already assigned") || errorMessage.includes("already on")) {
         alert(errorMessage);
       }
@@ -758,6 +845,14 @@ export default function LeaveManagementPage() {
               <h2 className="text-xl font-semibold text-white">All Leave Requests</h2>
               
               <div className="flex flex-wrap gap-3 items-center">
+                {/* Add Leave Button - Admin only */}
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Leave
+                </button>
                 {/* Download Template Button */}
                 <button
                   onClick={async () => {
@@ -1440,14 +1535,81 @@ export default function LeaveManagementPage() {
         </>
       )}
 
-      {/* Create Request Modal */}
+      {/* Create Request Modal / Add Leave Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-6 border w-96 shadow-2xl rounded-2xl bg-white/10 backdrop-blur-xl border-white/20">
+          <div className="relative top-20 mx-auto p-6 border w-full max-w-md shadow-2xl rounded-2xl bg-white/10 backdrop-blur-xl border-white/20">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-white mb-4">Create Leave Request...</h3>
+              <h3 className="text-lg font-medium text-white mb-4">
+                {user?.role === 'admin' ? 'Add Leave' : 'Create Leave Request'}
+              </h3>
               <form onSubmit={handleCreateRequest}>
-                {approver && (
+                {/* Personnel selector - Admin only: Free text search */}
+                {user?.role === 'admin' && (
+                  <div className="mb-4 relative">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Personnel <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.personnel_id ? selectedPersonnelDisplay : personnelSearch}
+                      onChange={(e) => {
+                        setPersonnelSearch(e.target.value);
+                        setFormData({ ...formData, personnel_id: '' });
+                        setSelectedPersonnelDisplay('');
+                        setPersonnelDropdownOpen(true);
+                      }}
+                      onFocus={() => setPersonnelDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setPersonnelDropdownOpen(false), 150)}
+                      placeholder="Type army no, name, or rank to search..."
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-400"
+                    />
+                    {formData.personnel_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                        setFormData({ ...formData, personnel_id: '' });
+                        setPersonnelSearch('');
+                        setSelectedPersonnelDisplay('');
+                        setSelectedPersonnelArmyNo('');
+                        }}
+                        className="absolute right-2 top-9 text-gray-400 hover:text-white"
+                        title="Clear"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    {personnelDropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full max-h-48 overflow-auto bg-gray-800 border border-white/20 rounded-lg shadow-lg">
+                        {loadingPersonnel ? (
+                          <div className="px-3 py-4 text-sm text-gray-400">Searching...</div>
+                        ) : personnelOptions.length === 0 ? (
+                          <div className="px-3 py-4 text-sm text-gray-400">
+                            {personnelSearchDebounced ? 'No personnel found' : 'Type to search'}
+                          </div>
+                        ) : (
+                          personnelOptions.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, personnel_id: String(p.id) });
+                                setSelectedPersonnelDisplay(`${p.army_no} - ${p.name}${p.rank ? ` (${p.rank})` : ''}`);
+                                setSelectedPersonnelArmyNo(p.army_no);
+                                setPersonnelSearch('');
+                                setPersonnelDropdownOpen(false);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 border-b border-white/5 last:border-0"
+                            >
+                              {p.army_no} - {p.name} {p.rank ? `(${p.rank})` : ''}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {approver && user?.role !== 'admin' && (
                   <div className="mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                     <label className="block text-xs font-medium text-gray-400 mb-1">
                       Approver
@@ -1460,7 +1622,7 @@ export default function LeaveManagementPage() {
                     </div>
                   </div>
                 )}
-                {!approver && (
+                {!approver && user?.role !== 'admin' && (
                   <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <div className="text-xs text-yellow-400">
                       <AlertTriangle className="w-4 h-4 inline mr-1" />
@@ -1494,7 +1656,7 @@ export default function LeaveManagementPage() {
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={undefined}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                     required
                   />
@@ -1507,7 +1669,7 @@ export default function LeaveManagementPage() {
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    min={formData.startDate || new Date().toISOString().split('T')[0]}
+                    min={formData.startDate || undefined}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                     required
                   />
@@ -1528,7 +1690,13 @@ export default function LeaveManagementPage() {
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowCreateModal(false)}
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setFormData({ leave_type_id: '', personnel_id: '', startDate: '', endDate: '', reason: '' });
+                      setPersonnelSearch('');
+                      setSelectedPersonnelDisplay('');
+                      setSelectedPersonnelArmyNo('');
+                    }}
                     className="px-4 py-2 text-gray-300 border border-white/20 rounded-lg hover:bg-white/10 transition-colors"
                   >
                     Cancel
@@ -1537,7 +1705,7 @@ export default function LeaveManagementPage() {
                     type="submit"
                     className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300"
                   >
-                    Submit
+                    {user?.role === 'admin' ? 'Add Leave' : 'Submit'}
                   </button>
                 </div>
               </form>
