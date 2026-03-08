@@ -9,6 +9,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase, Trash2, Plus } from 'lucide-react';
 import { paginationConfig } from '@/config/pagination';
+import { formatDate } from '@/lib/utils';
 
 interface LeaveType {
   id: number;
@@ -648,15 +649,6 @@ export default function LeaveManagementPage() {
     if (percentage >= 80) return 'bg-gradient-to-r from-rose-500 to-rose-600';
     if (percentage >= 50) return 'bg-gradient-to-r from-amber-500 to-amber-600';
     return 'bg-gradient-to-r from-emerald-500 to-emerald-600';
-  };
-
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return '--';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
   };
 
   const calculateDays = (startDate: string, endDate: string) => {

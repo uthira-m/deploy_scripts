@@ -10,6 +10,7 @@ import { dashboardService ,leaveService, imageService, whatsNewService} from "@/
 import { Users, CheckCircle2, Hospital, CalendarDays, Briefcase,Bell, BookOpen, Clock, FileCheck, Plus, FileText, Building2, Calendar, GraduationCap, AlertCircle, ChevronLeft, ChevronRight, Shield, Eye } from 'lucide-react';
 import ImageComponent from 'next/image';
 import { config } from "@/config/env";
+import { formatDate } from "@/lib/utils";
 
 // Custom tooltip component for better styling control
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -752,11 +753,6 @@ export default function Dashboard() {
                       const ext = doc.filename.split('.').pop()?.toLowerCase() || '';
                       const isPdf = ext === 'pdf';
                       const displayName = doc.filename.replace(/^\d+_/, '');
-                      const formatDate = (dateStr?: string) => {
-                        if (!dateStr) return '';
-                        const d = new Date(dateStr);
-                        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                      };
                       return (
                         <div
                           key={doc.filename}

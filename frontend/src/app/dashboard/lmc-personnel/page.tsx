@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { personnelService, api, medicalCategoryService } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 import Sidebar from "@/components/Sidebar";
 
 interface Personnel {
@@ -160,17 +161,6 @@ export default function LMCPersonnelPage() {
       return person.companies.map((c) => c.company_name).join(', ');
     }
     return '--';
-  };
-
-  // Helper function to format date
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return '--';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-GB');
-    } catch {
-      return '--';
-    }
   };
 
   // Render table component

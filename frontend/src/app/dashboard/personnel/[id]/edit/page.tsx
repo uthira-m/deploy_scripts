@@ -664,7 +664,7 @@ export default function EditPersonnelPage() {
         notifySuccess('Personnel updated successfully');
         // Redirect back to view page after a short delay
         setTimeout(() => {
-          router.push(back.href);
+          router.push(`/dashboard/personnel/${personnelId}`);
         }, 1500);
       } else {
         setError(response.message || "Failed to update personnel");
@@ -748,7 +748,7 @@ export default function EditPersonnelPage() {
           <div className="mb-6 lg:mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Link href={back.href} className="text-blue-400 hover:text-blue-300 text-4xl transition-colors flex items-center gap-2">
+                <Link href={`/dashboard/personnel/${personnelId}`} className="text-blue-400 hover:text-blue-300 text-4xl transition-colors flex items-center gap-2">
                   ← 
                 </Link>
                 <div>
@@ -1504,7 +1504,7 @@ export default function EditPersonnelPage() {
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-white/20">
                 <Link
-                  href={back.href}
+                 href={`/dashboard/personnel/${personnelId}`}
                   className="px-6 py-3 text-gray-300 hover:text-white transition-colors duration-200"
                 >
                   Cancel

@@ -687,16 +687,6 @@ export default function PersonnelDetailsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return '--';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = d.toLocaleString('en-GB', { month: 'short' });
-    const year = d.getFullYear();
-    const time = d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-    return `${day} ${month} ${year}, ${time}`;
-  };
-
   const handleDocFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -5307,6 +5297,9 @@ export default function PersonnelDetailsPage() {
                               Offence
                             </th>
                             <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base border-r border-white/20">
+                              Date of Offence
+                            </th>
+                            <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base border-r border-white/20">
                               Section AA
                             </th>
                             <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base border-r border-white/20">
@@ -5324,7 +5317,7 @@ export default function PersonnelDetailsPage() {
                           {notEndorsedOffences.length === 0 ? (
                             <tr>
                               <td
-                                colSpan={6}
+                                colSpan={7}
                                 className="px-4 lg:px-6 py-8 text-center text-gray-400"
                               >
                                 No non-endorsed offences recorded
@@ -5341,6 +5334,9 @@ export default function PersonnelDetailsPage() {
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base border-r border-white/20">
                                   {offence.offence}
+                                </td>
+                                <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base border-r border-white/20">
+                                  {offence.date_of_offence ? formatDate(offence.date_of_offence) : "N/A"}
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base border-r border-white/20">
                                   {offence.section_aa || "N/A"}
@@ -5669,12 +5665,12 @@ export default function PersonnelDetailsPage() {
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                                   {item.start_date
-                                    ? formatDateForInput(item.start_date)
+                                    ? formatDate(item.start_date)
                                     : "-"}
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                                   {item.end_date
-                                    ? formatDateForInput(item.end_date)
+                                    ? formatDate(item.end_date)
                                     : "-"}
                                 </td>
                                 {canEdit() && (
@@ -5778,12 +5774,12 @@ export default function PersonnelDetailsPage() {
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                                   {item.date_of_admission
-                                    ? formatDateForInput(item.date_of_admission)
+                                    ? formatDate(item.date_of_admission)
                                     : "-"}
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                                   {item.date_of_discharge
-                                    ? formatDateForInput(item.date_of_discharge)
+                                    ? formatDate(item.date_of_discharge)
                                     : "-"}
                                 </td>
                                 <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">

@@ -9,6 +9,7 @@ import { Pagination } from "@/components/Pagination";
 import { api } from "@/lib/api";
 import { paginationConfig } from "@/config/pagination";
 import { config } from "@/config/env";
+import { formatDate } from "@/lib/utils";
 import { Upload, FileText, Calendar, User, Eye, Download, Trash2, X, Plus } from "lucide-react";
 
 interface Document {
@@ -166,16 +167,6 @@ export default function DocsPage() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return '--';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = d.toLocaleString('en-GB', { month: 'short' });
-    const year = d.getFullYear();
-    const time = d.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-    return `${day} ${month} ${year}, ${time}`;
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

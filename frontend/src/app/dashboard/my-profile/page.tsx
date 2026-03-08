@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api, personnelService, personnelSportsService } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { config } from '@/config/env';
-import { formatDateShort } from '@/lib/utils';
+import { formatDate, formatDateShort } from '@/lib/utils';
 import { getServerDate } from '@/lib/serverTime';
 import { X, Download, Trophy, Lightbulb } from 'lucide-react';
 
@@ -443,17 +443,6 @@ export default function MyProfilePage() {
       return `${config.BACKEND_URL}${profile.photo_url}`;
     }
     return null;
-  };
-
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return '--';
-    
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = date.toLocaleString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    
-    return `${day} ${month}, ${year}`;
   };
 
   const calculateAge = (dob?: string): number => {

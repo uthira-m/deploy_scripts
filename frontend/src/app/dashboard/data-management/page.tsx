@@ -108,15 +108,9 @@ export default function DataManagementPage() {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return dateStr;
     const day = String(d.getDate()).padStart(2, "0");
-    const month = d.toLocaleString("en-US", { month: "short" });
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
-    const time = d.toLocaleString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-    return `${day}-${month}-${year} ${time}`;
+    return `${day}/${month}/${year}`;
   };
 
   return (
