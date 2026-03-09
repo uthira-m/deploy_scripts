@@ -51,3 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_mental_well_being_person_id
 
 CREATE INDEX IF NOT EXISTS idx_mental_well_being_next_review_date
   ON mental_well_being(next_review_date);
+
+INSERT INTO grades (name, description, is_active, created_at, updated_at)
+VALUES ('AX', 'AX grade', TRUE, NOW(), NOW());
+
+INSERT INTO leave_types (code, name, "desc", max_days, is_active, created_at, updated_at)
+VALUES ('LT007', 'Advl', 'Advl leave', 0, TRUE, NOW(), NOW());
