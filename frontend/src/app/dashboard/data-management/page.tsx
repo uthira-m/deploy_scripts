@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatDate } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
 import { dataManagementService, downloadBackup, type BackupItem } from "@/lib/api";
@@ -105,12 +106,8 @@ export default function DataManagementPage() {
     } else if (dateStr.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       iso = dateStr + "T00:00:00";
     }
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return dateStr;
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    const result = formatDate(iso);
+    return result === "--" ? dateStr : result;
   };
 
   return (

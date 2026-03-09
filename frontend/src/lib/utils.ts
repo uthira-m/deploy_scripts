@@ -47,15 +47,32 @@ export const calculateServiceDuration = (doeString: string): string => {
 };
 
 /**
+ * Parse date string to Date object. Centralized parsing for consistency.
+ * Returns null for invalid or empty.
+ */
+export const parseDate = (dateStr: string | undefined | null): Date | null => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/**
+ * Parse date string to timestamp (ms since epoch) for sorting/comparison.
+ * Uses centralized parsing; returns 0 for invalid or empty.
+ */
+export const parseToTimestamp = (dateStr: string | undefined | null): number => {
+  const d = parseDate(dateStr);
+  return d ? d.getTime() : 0;
+};
+
+/**
  * Format date to DD/MM/YYYY (consistent across all pages)
  * @param dateString - Date as string
  * @returns Formatted date string
  */
 export const formatDate = (dateString: string | undefined | null): string => {
-  if (!dateString) return '--';
-  
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return '--';
+  const d = parseDate(dateString);
+  if (!d) return '--';
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -68,10 +85,8 @@ export const formatDate = (dateString: string | undefined | null): string => {
  * @returns Short formatted date string
  */
 export const formatDateShort = (dateString: string | undefined | null): string => {
-  if (!dateString) return '--';
-  
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return '--';
+  const d = parseDate(dateString);
+  if (!d) return '--';
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -85,9 +100,9 @@ export const formatDateShort = (dateString: string | undefined | null): string =
  */
 export const validatePersonnelDob = (value: string): string => {
   if (!value) return '';
-  const birthDate = new Date(value);
+  const birthDate = parseDate(value);
   const today = getServerDate();
-  if (isNaN(birthDate.getTime())) return 'Invalid date';
+  if (!birthDate) return 'Invalid date';
   if (birthDate > today) return 'Date of birth cannot be in the future';
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -96,6 +111,24 @@ export const validatePersonnelDob = (value: string): string => {
   if (age < 18) return 'Age must be at least 18 years';
   if (age > 50) return 'Age must not exceed 50 years';
   return '';
+};
+
+/**
+ * Format duration string that may contain YYYY-MM-DD dates to dd/mm/yyyy.
+ * Handles: "2024-01-15 to 2024-02-15", "2024-01-15", RFC3339, or plain text.
+ */
+export const formatDurationDates = (duration: string | undefined | null): string => {
+  if (!duration || !duration.trim()) return '--';
+  const trimmed = duration.trim();
+  const rangeMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)\s+to\s+(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)$/i);
+  if (rangeMatch) {
+    return `${formatDate(rangeMatch[1])} to ${formatDate(rangeMatch[2])}`;
+  }
+  const singleMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)$/);
+  if (singleMatch) {
+    return `${formatDate(singleMatch[1])} - till date`;
+  }
+  return trimmed;
 };
 
 /**
@@ -111,8 +144,8 @@ export const toDateInputValue = (dateString: string | undefined | null): string 
   // If already in YYYY-MM-DD format, return as is
   const ymdMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (ymdMatch) return ymdMatch[0];
-  const date = new Date(trimmed);
-  if (isNaN(date.getTime())) return '';
+  const date = parseDate(trimmed);
+  if (!date) return '';
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');

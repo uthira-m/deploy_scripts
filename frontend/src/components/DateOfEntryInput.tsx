@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { getServerDate } from "@/lib/serverTime";
 
 interface DateOfEntryInputProps {
   value: string;
@@ -31,7 +32,7 @@ export default function DateOfEntryInput({
   disabled = false,
 }: DateOfEntryInputProps) {
   const maxDate = useMemo(() => {
-    const today = new Date();
+    const today = getServerDate();
     return today.toISOString().split("T")[0];
   }, []);
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { personnelService } from "@/lib/api";
+import { getServerDate } from "@/lib/serverTime";
 
 interface CourseLike {
   start_date?: string;
@@ -10,7 +11,7 @@ interface CourseLike {
 const isCurrentlyOnCourse = (courses: CourseLike[]) => {
   if (!courses || courses.length === 0) return false;
 
-  const now = new Date();
+  const now = getServerDate();
   return courses.some((course) => {
     if (!course.start_date) return false;
 

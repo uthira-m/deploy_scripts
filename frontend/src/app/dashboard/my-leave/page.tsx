@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import { getServerDate } from '@/lib/serverTime';
+import { formatDate, parseDate } from '@/lib/utils';
 import { Briefcase, UserCog,FileText } from 'lucide-react';
 
 interface LeaveType {
@@ -210,24 +212,17 @@ export default function MyLeavePage() {
 
   const formatApplyDate = (dateStr?: string | null): string => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '-';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    const result = formatDate(dateStr);
+    return result === '--' ? '-' : result;
   };
 
   const calculateDays = (startDate: string, endDate: string) => {
-    try {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const timeDiff = end.getTime() - start.getTime();
-      const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-      return days > 0 ? days : 0;
-    } catch (error) {
-      return 0;
-    }
+    const start = parseDate(startDate);
+    const end = parseDate(endDate);
+    if (!start || !end) return 0;
+    const timeDiff = end.getTime() - start.getTime();
+    const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    return days > 0 ? days : 0;
   };
 
   const getStatusColor = (status: string) => {
@@ -545,7 +540,7 @@ export default function MyLeavePage() {
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={getServerDate().toISOString().split('T')[0]}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                     required
                   />
@@ -558,7 +553,7 @@ export default function MyLeavePage() {
                     type="date"
                     value={formData.end_date}
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    min={formData.start_date || new Date().toISOString().split('T')[0]}
+                    min={formData.start_date || getServerDate().toISOString().split('T')[0]}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                     required
                   />

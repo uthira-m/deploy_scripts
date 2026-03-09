@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { personnelService } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDurationDates } from "@/lib/utils";
 import { Drone, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -315,7 +315,7 @@ export default function DronePilotsPage() {
                             {proficiency.level.charAt(0).toUpperCase() + proficiency.level.slice(1)}
                           </td>
                           <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
-                            {proficiency.duration || "--"}
+                            {formatDurationDates(proficiency.duration)}
                           </td>
                           <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                             {proficiency.location || "--"}

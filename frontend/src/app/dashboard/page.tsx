@@ -10,8 +10,31 @@ import { dashboardService ,leaveService, imageService, whatsNewService} from "@/
 import { Users, CheckCircle2, Hospital, CalendarDays, Briefcase,Bell, BookOpen, Clock, FileCheck, Plus, FileText, Building2, Calendar, GraduationCap, AlertCircle, ChevronLeft, ChevronRight, Shield, Eye } from 'lucide-react';
 import ImageComponent from 'next/image';
 import { config } from "@/config/env";
-import { formatDate } from "@/lib/utils";
+import { formatDate, parseToTimestamp } from "@/lib/utils";
 import { getServerDate } from "@/lib/serverTime";
+
+// Greeting messages - shown randomly per day in the text marquee
+const GREETING_MESSAGES = [
+  'Hard work, courage, and honor – have a wonderful day soldier.',
+  'Salute to your strength and commitment. Have a proud day ahead.',
+  'Rise with courage, serve with honor. Have a great day.',
+  'Salute to the brave hearts protecting the nation. Have a nice day.',
+  'Every day is a mission. Serve with pride. Have a great day.',
+  'Salute to the warriors who never give up. Have a great day.',
+  'Hard work and courage lead the way. Have a great day.',
+];
+
+// Returns a greeting that stays the same for the day (seeded by date)
+const getGreetingForToday = (): string => {
+  const dateStr = new Date().toDateString();
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const index = Math.abs(hash) % GREETING_MESSAGES.length;
+  return GREETING_MESSAGES[index];
+};
 
 // Custom tooltip component for better styling control
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -132,7 +155,7 @@ export default function Dashboard() {
             },
             { 
               title: "On ERE", 
-              value: onEREPersonnel.count.toString(), 
+              value: onEREPersonnel.categoryBreakdown || onEREPersonnel.count.toString(), 
               change: onEREPersonnel.change, 
               icon: Hospital, 
               description: onEREPersonnel.description, 
@@ -141,7 +164,7 @@ export default function Dashboard() {
             },
             { 
               title: "On Leave", 
-              value: onLeavePersonnel.count.toString(), 
+              value: onLeavePersonnel.categoryBreakdown || onLeavePersonnel.count.toString(), 
               change: onLeavePersonnel.change, 
               icon: CalendarDays, 
               description: onLeavePersonnel.description, 
@@ -150,7 +173,7 @@ export default function Dashboard() {
             },
             { 
               title: "Out Station Employees", 
-              value: outStationPersonnel?.count?.toString() || "0", 
+              value: outStationPersonnel?.categoryBreakdown || outStationPersonnel?.count?.toString() || "00-00-00", 
               change: outStationPersonnel?.change || "+0", 
               icon: Briefcase, 
               description: outStationPersonnel?.description || "Out Station Employment", 
@@ -159,7 +182,7 @@ export default function Dashboard() {
             },
             ...((user?.role === 'admin' || user?.role === 'commander') && onCoursePersonnel ? [{
               title: "On Course",
-              value: onCoursePersonnel.count.toString(),
+              value: onCoursePersonnel.categoryBreakdown || onCoursePersonnel.count.toString(),
               change: onCoursePersonnel.change,
               icon: GraduationCap,
               description: onCoursePersonnel.description,
@@ -305,7 +328,19 @@ export default function Dashboard() {
         const response = await dashboardService.getLeaveArrivalsData();
 
         if (response.status === 'success' && response.data) {
-          setLeaveArrivalsData(response.data || []);
+          const data = response.data || [];
+          const companyOrder = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Headquarter', 'Support'];
+          const sorted = [...data].sort((a, b) => {
+            if (a.company === 'Total') return 1;
+            if (b.company === 'Total') return -1;
+            const aIdx = companyOrder.indexOf(a.company);
+            const bIdx = companyOrder.indexOf(b.company);
+            if (aIdx === -1 && bIdx === -1) return (a.company || '').localeCompare(b.company || '');
+            if (aIdx === -1) return 1;
+            if (bIdx === -1) return -1;
+            return aIdx - bIdx;
+          });
+          setLeaveArrivalsData(sorted);
         }
       } catch (error) {
         console.error('Error fetching leave arrivals data:', error);
@@ -491,8 +526,8 @@ export default function Dashboard() {
           const docs = Array.isArray(res.data) ? res.data : [];
           // Sort by modified_at (last updated first)
           const sorted = [...docs].sort((a: any, b: any) => {
-            const aTime = a.modified_at ? new Date(a.modified_at).getTime() : 0;
-            const bTime = b.modified_at ? new Date(b.modified_at).getTime() : 0;
+            const aTime = parseToTimestamp(a.modified_at);
+            const bTime = parseToTimestamp(b.modified_at);
             return bTime - aTime;
           });
           setWhatsNewDocs(sorted);
@@ -674,31 +709,21 @@ export default function Dashboard() {
                       <div className="col-span-full">
                         <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                           {['Guards and Duties', 'FTS', 'IN STN DUTIES', 'ATT GRRC', 'ATT OTHER UNITS', 'TD'].map((title) => {
-                            const value = outStationFormationCategories[title] || '00 - 00 - 00';
-                            const formationCardColors = [
-                              'from-violet-500 to-violet-600',
-                              'from-teal-500 to-teal-600',
-                              'from-fuchsia-500 to-fuchsia-600',
-                              'from-amber-500 to-amber-600',
-                              'from-rose-500 to-rose-600',
-                              'from-slate-500 to-slate-600',
-                            ];
-                            const i = ['Guards and Duties', 'FTS', 'IN STN DUTIES', 'ATT GRRC', 'ATT OTHER UNITS', 'TD'].indexOf(title);
+                            const value = outStationFormationCategories[title] || '00-00-00';
+                            const filterUrl = `/dashboard/all-personnel?status=Out Station&formation_category=${encodeURIComponent(title)}`;
                             return (
-                              <div
+                              <Link
                                 key={title}
-                                className="min-w-0 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-2 sm:p-3 md:p-4 lg:p-5 xl:p-6 hover:bg-white/10 transition-all duration-300 shadow-lg text-left"
+                                href={filterUrl}
+                                className="min-w-0 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-2 sm:p-3 md:p-4 lg:p-5 xl:p-6 hover:bg-white/10 transition-all duration-300 shadow-lg text-left block cursor-pointer"
                               >
                                 <div className="flex items-center justify-between min-w-0">
                                   <div className="flex-1 min-w-0">
                                     <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium leading-tight truncate" title={title}>{title}</p>
                                     <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold text-white mt-0.5 sm:mt-1 font-mono leading-tight">{value}</p>
                                   </div>
-                                  {/* <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-lg bg-gradient-to-br ${formationCardColors[i]} flex items-center justify-center shadow-lg`}>
-                                    <Shield className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-                                  </div> */}
                                 </div>
-                              </div>
+                              </Link>
                             );
                           })}
                         </div>
@@ -969,25 +994,29 @@ export default function Dashboard() {
             {/* Personnel Images Marquee - Only show if images exist */}
             {personnelImages.length > 0 && (
               <div className="mb-6 lg:mb-8 overflow-hidden">
-                <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 shadow-lg overflow-hidden">
-                  <div className="flex gap-4 animate-marquee">
-                    {personnelImages.map((img, index) => (
-                      <div
-                        key={`${img}-${index}`}
-                        className="flex-shrink-0 w-24 h-24 lg:w-32 lg:h-32 rounded-lg overflow-hidden border-2 border-white/20 shadow-lg hover:border-white/40 transition-all duration-300 hover:scale-105"
-                      >
-                        <ImageComponent
-                          src={img}
-                          alt={`Personnel ${index + 1}`}
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover"
-                          quality={90}
-                          unoptimized
-                        />
-                      </div>
-                    ))}
-                  </div>
+                <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-4 shadow-lg overflow-hidden">
+                  <marquee behavior="scroll" direction="left" loop>
+                    <div className="flex gap-4" style={{ display: 'inline-flex', alignItems: 'center', paddingRight: '6rem' }}>
+                      {personnelImages.map((img, index) => (
+                        <div
+                          key={`${img}-${index}`}
+                          className="flex-shrink-0 w-32 h-32 lg:w-48 lg:h-48 rounded-lg overflow-hidden border-2 border-white/20 shadow-lg hover:border-white/40 transition-all duration-300 hover:scale-105"
+                          onMouseEnter={(e) => (e.currentTarget.closest('marquee') as HTMLMarqueeElement)?.stop()}
+                          onMouseLeave={(e) => (e.currentTarget.closest('marquee') as HTMLMarqueeElement)?.start()}
+                        >
+                          <ImageComponent
+                            src={img}
+                            alt={`Personnel ${index + 1}`}
+                            width={128}
+                            height={128}
+                            className="w-full h-full"
+                            quality={90}
+                            unoptimized
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </marquee>
                 </div>
               </div>
             )}
@@ -995,82 +1024,43 @@ export default function Dashboard() {
             {/* Text Marquee */}
             <div className="mb-6 lg:mb-8 overflow-hidden">
               <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 shadow-lg overflow-hidden">
-                <div className="flex items-center gap-8 animate-marquee-text whitespace-nowrap">
-                  {/* Date and Day */}
-                  <div className="flex items-center gap-3 text-white font-semibold text-lg lg:text-xl">
+                <marquee behavior="scroll" direction="left" loop className="whitespace-nowrap text-center" onMouseEnter={(e) => e.currentTarget.stop()} onMouseLeave={(e) => e.currentTarget.start()}>
+                  <div className="inline-flex items-center whitespace-nowrap">
+                  {/* Date and Day - Profiling Time Period custom date */}
+                  <span className="inline-flex items-center gap-3 text-white font-semibold text-lg lg:text-xl mx-8 shrink-0">
                     <Calendar className="w-6 h-6 text-blue-400" />
-                    <span>
-                      {getServerDate().toLocaleDateString('en-GB', { 
-                        day: '2-digit', 
-                        month: 'short', 
-                        year: 'numeric' 
-                      })}, {getServerDate().toLocaleDateString('en-US', { weekday: 'short' })}
-                    </span>
-                  </div>
-                  
+                    {getServerDate().toLocaleDateString('en-GB', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}, {getServerDate().toLocaleDateString('en-US', { weekday: 'short' })}
+                  </span>
                   {/* Greeting */}
-                  <div className="flex items-center gap-2 text-yellow-300 font-medium text-base lg:text-lg">
+                  <span className="inline-flex items-center gap-2 text-yellow-300 font-medium text-base lg:text-lg mx-8 shrink-0">
                     <span className="text-2xl">👋</span>
-                    <span>Have a nice day!</span>
-                  </div>
-                  
+                    {getGreetingForToday()}
+                  </span>
                   {/* Contact Info */}
-                  <div className="flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg">
+                  <span className="inline-flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg mx-8 shrink-0">
                     <span>📞</span>
-                    <span>For any assistance contact DOCU CELL</span>
-                  </div>
-                  
+                    For any assistance contact DOCU CELL : +91 7599313770, +91 7895114479
+                  </span>
                   {/* Birthdays */}
                   {!birthdaysLoading && todayBirthdays.length > 0 && (
-                    <div className="flex items-center gap-2 text-pink-300 font-medium text-base lg:text-lg">
+                    <span className="inline-flex items-center gap-2 text-pink-300 font-medium text-base lg:text-lg mx-8 shrink-0">
                       <span className="text-2xl">🎂</span>
-                      <span>
-                        Happy Birthday to {todayBirthdays.map((b, idx) => (
-                          <span key={idx}>
-                            {b.army_no}
-                            {idx < todayBirthdays.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Repeat for seamless loop */}
-                  <div className="flex items-center gap-3 text-white font-semibold text-lg lg:text-xl">
-                    <Calendar className="w-6 h-6 text-blue-400" />
-                    <span>
-                      {getServerDate().toLocaleDateString('en-GB', { 
-                        day: '2-digit', 
-                        month: 'short', 
-                        year: 'numeric' 
-                      })}, {getServerDate().toLocaleDateString('en-US', { weekday: 'short' })}
+                      Happy Birthday to {todayBirthdays.map((b, idx) => (
+                        <span key={b.id || idx}>
+                          <Link href={`/dashboard/personnel/${b.id}?from=dashboard&returnTo=${encodeURIComponent('/dashboard')}`} className="text-pink-300 hover:text-pink-200 underline cursor-pointer">
+                            {b.name || b.army_no}
+                          </Link>
+                          {idx < todayBirthdays.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}
                     </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-yellow-300 font-medium text-base lg:text-lg">
-                    <span className="text-2xl">👋</span>
-                    <span>Have a nice day!</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg">
-                    <span>📞</span>
-                    <span>For any assistance contact DOCU CELL</span>
-                  </div>
-                  
-                  {!birthdaysLoading && todayBirthdays.length > 0 && (
-                    <div className="flex items-center gap-2 text-pink-300 font-medium text-base lg:text-lg">
-                      <span className="text-2xl">🎂</span>
-                      <span>
-                        Happy Birthday to {todayBirthdays.map((b, idx) => (
-                          <span key={idx}>
-                            {b.army_no}
-                            {idx < todayBirthdays.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </span>
-                    </div>
                   )}
-                </div>
+                  </div>
+                </marquee>
               </div>
             </div>
 
@@ -1194,13 +1184,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-white font-medium text-sm">{(() => {
-                          const d = new Date(notification.date);
-                          const day = String(d.getDate()).padStart(2, '0');
-                          const month = d.toLocaleString('en-GB', { month: 'short' });
-                          const year = d.getFullYear();
-                          return `${day} ${month} ${year}`;
-                        })()}</p>
+                          <p className="text-white font-medium text-sm">{formatDate(notification.date)}</p>
                           <p className={`text-xs font-semibold ${
                             notification.type === 'Course' ? 'text-blue-400' :
                             notification.type === 'ERE' ? 'text-orange-400' :

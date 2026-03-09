@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
+import MentalWellBeingTab from "@/components/MentalWellBeingTab";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import {
   personnelService,
@@ -19,7 +20,8 @@ import {
   api,
 } from "@/lib/api";
 import { config } from "@/config/env";
-import { calculateServiceDuration, formatDate,formatDateShort, toDateInputValue } from "@/lib/utils";
+import { calculateServiceDuration, formatDate, formatDateShort, formatDurationDates, toDateInputValue } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { useNotification } from "@/contexts/NotificationContext";
 import {
   User,
@@ -605,15 +607,21 @@ export default function PersonnelDetailsPage() {
   const { canModify, isAdmin } = usePermissions();
   const personnelId = params.id as string;
   const fromParam = searchParams.get("from");
+  const returnTo = searchParams.get("returnTo");
   const backConfig = {
     jco: { href: "/dashboard/personnel-jco", label: "Back to JCO List" },
     officers: { href: "/dashboard/officers", label: "Back to Officers List" },
     admins: { href: "/dashboard/admins", label: "Back to Admins List" },
+    personnel: { href: "/dashboard/personnel", label: "Back to Personnel List" },
+    "all-personnel": { href: "/dashboard/all-personnel", label: "Back to All Personnel" },
+    dashboard: { href: "/dashboard", label: "Back to Dashboard" },
   } as const;
-  const back = (fromParam && backConfig[fromParam as keyof typeof backConfig]) || {
-    href: "/dashboard/personnel",
-    label: "Back to Personnel List",
-  };
+  const back = returnTo
+    ? { href: decodeURIComponent(returnTo), label: (decodeURIComponent(returnTo) === "/dashboard" || decodeURIComponent(returnTo) === "/dashboard/") ? "Back to Dashboard" : "Back to List" }
+    : (fromParam && backConfig[fromParam as keyof typeof backConfig]) || {
+        href: "/dashboard/personnel",
+        label: "Back to Personnel List",
+      };
 
   // Document handlers
   const handleUploadDocument = async (e: React.FormEvent) => {
@@ -805,8 +813,7 @@ export default function PersonnelDetailsPage() {
 
   const fetchAvailableCourses = async () => {
     try {
-      const response = await courseService.getAllCourses();
-      console.log("Available courses response:", response);
+      const response = await courseService.getAvailableCourses();
       if (
         response.status === "success" &&
         response.data &&
@@ -3204,14 +3211,18 @@ export default function PersonnelDetailsPage() {
 
   const handleEditProficiency = (proficiency: Proficiency) => {
     setEditingProficiency(proficiency);
-    // Parse duration string to extract from and to dates if format is "YYYY-MM-DD to YYYY-MM-DD"
+    // Parse duration string to extract from and to dates
+    // Format: "YYYY-MM-DD to YYYY-MM-DD" or single "YYYY-MM-DD" (start date only, no end date)
     let duration_from = "";
     let duration_to = "";
     if (proficiency.duration) {
-      const parts = proficiency.duration.split(" to ");
+      const trimmed = proficiency.duration.trim();
+      const parts = trimmed.split(/\s+to\s+/i);
       if (parts.length === 2) {
-        duration_from = parts[0].trim();
-        duration_to = parts[1].trim();
+        duration_from = toDateInputValue(parts[0].trim());
+        duration_to = toDateInputValue(parts[1].trim());
+      } else if (parts.length === 1 && parts[0].trim()) {
+        duration_from = toDateInputValue(parts[0].trim());
       }
     }
     setProficiencyFormData({
@@ -3858,6 +3869,7 @@ export default function PersonnelDetailsPage() {
                 { id: "leave", label: "Leave", icon: CalendarDays },
                 { id: "docs", label: "Docs", icon: FileText },
                 { id: "others", label: "Others", icon: Briefcase },
+                { id: "mental-well-being", label: "Mental Well-Being", icon: HeartPulse },
               ].map((tab) => {
                 const IconComponent = tab.icon;
                 return (
@@ -3964,7 +3976,7 @@ export default function PersonnelDetailsPage() {
                                 {proficiency.level.charAt(0).toUpperCase() + proficiency.level.slice(1)}
                               </td>
                               <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
-                                {proficiency.duration || "--"}
+                                {formatDurationDates(proficiency.duration)}
                               </td>
                               <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                                 {proficiency.location || "--"}
@@ -4383,7 +4395,7 @@ export default function PersonnelDetailsPage() {
                           <div>
                             <p className="profile-field-label">Recat Date</p>
                             <p className="profile-field-value">
-                              {personnel.recat_date ? new Date(personnel.recat_date).toLocaleDateString('en-GB') : "Not specified"}
+                              {personnel.recat_date ? formatDateShort(personnel.recat_date) : "Not specified"}
                             </p>
                           </div>
                         </div>
@@ -4405,7 +4417,7 @@ export default function PersonnelDetailsPage() {
                           <div>
                             <p className="profile-field-label">Date of Medical Board</p>
                             <p className="profile-field-value">
-                              {personnel.date_of_medical_board ? new Date(personnel.date_of_medical_board).toLocaleDateString('en-GB') : "Not specified"}
+                              {personnel.date_of_medical_board ? formatDateShort(personnel.date_of_medical_board) : "Not specified"}
                             </p>
                           </div>
                           <div>
@@ -4507,7 +4519,7 @@ export default function PersonnelDetailsPage() {
                                     </p>
                                     <p className="profile-field-value">
                                       {sport.year_of_participation
-                                        ? new Date(sport.year_of_participation).toLocaleDateString('en-GB')
+                                        ? formatDateShort(sport.year_of_participation)
                                         : "--"}
                                     </p>
                                   </div>
@@ -6022,6 +6034,10 @@ export default function PersonnelDetailsPage() {
                     )}
                   </div>
                 </div>
+              )}
+
+              {activeTab === "mental-well-being" && (
+                <MentalWellBeingTab personId={personnelId} canEdit={canEdit} />
               )}
             </div>
           </div>
@@ -8168,7 +8184,7 @@ export default function PersonnelDetailsPage() {
                           start_date: e.target.value,
                         })
                       }
-                      min={new Date().toISOString().split("T")[0]}
+                      min={getServerDate().toISOString().split("T")[0]}
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                       required
                     />
@@ -8188,7 +8204,7 @@ export default function PersonnelDetailsPage() {
                       }
                       min={
                         leaveFormData.start_date ||
-                        new Date().toISOString().split("T")[0]
+                        getServerDate().toISOString().split("T")[0]
                       }
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
                       required

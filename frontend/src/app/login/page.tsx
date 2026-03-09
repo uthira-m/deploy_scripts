@@ -485,16 +485,18 @@ export default function LoginPage() {
           animationStage === "complete" ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >
-        <div className="login-marquee-track">
-          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
-          <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
-          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
-          <span className="login-marquee-separator" aria-hidden>✦</span>
-          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
-          <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
-          <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
-          <span className="login-marquee-separator" aria-hidden>✦</span>
-        </div>
+        <marquee behavior="scroll" direction="left" loop onMouseEnter={(e) => e.currentTarget.stop()} onMouseLeave={(e) => e.currentTarget.start()}>
+          <span className="inline-flex items-center gap-4 mx-4">
+            <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+            <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
+            <span className="login-marquee-separator" aria-hidden>✦</span>
+          </span>
+          <span className="inline-flex items-center gap-4 mx-4">
+            <Image src={logo1Image} alt="" width={24} height={24} className="login-marquee-logo" aria-hidden />
+            <span className="login-marquee-text">This software is developed by Towering Twelfth on March 2026</span>
+            <span className="login-marquee-separator" aria-hidden>✦</span>
+          </span>
+        </marquee>
       </div>
     </main>
   );

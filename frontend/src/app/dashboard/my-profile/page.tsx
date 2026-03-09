@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api, personnelService, personnelSportsService } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { config } from '@/config/env';
-import { formatDate, formatDateShort } from '@/lib/utils';
+import { formatDate, formatDateShort, parseDate } from '@/lib/utils';
 import { getServerDate } from '@/lib/serverTime';
 import { X, Download, Trophy, Lightbulb } from 'lucide-react';
 
@@ -447,8 +447,9 @@ export default function MyProfilePage() {
 
   const calculateAge = (dob?: string): number => {
     if (!dob) return 0;
-    const birthDate = new Date(dob);
+    const birthDate = parseDate(dob);
     const today = getServerDate();
+    if (!birthDate) return 0;
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -459,8 +460,9 @@ export default function MyProfilePage() {
 
   const calculateService = (doe?: string): string => {
     if (!doe) return 'N/A';
-    const entryDate = new Date(doe);
+    const entryDate = parseDate(doe);
     const today = getServerDate();
+    if (!entryDate) return 'N/A';
     const years = today.getFullYear() - entryDate.getFullYear();
     const months = today.getMonth() - entryDate.getMonth();
     
@@ -486,10 +488,10 @@ export default function MyProfilePage() {
       return '--';
     }
 
-    const start = new Date(course.start_date);
-    const end = new Date(getCourseEndDate(course) as string);
+    const start = parseDate(course.start_date);
+    const end = parseDate(getCourseEndDate(course) as string);
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!start || !end) {
       return '--';
     }
 

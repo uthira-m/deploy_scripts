@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Pagination } from "@/components/Pagination";
 import { quickFiltersService, rankService, api } from "@/lib/api";
+import { getServerDate } from "@/lib/serverTime";
 import { Filter, Search, X, ChevronDown, ChevronUp, Download, Printer, Calendar, FileText } from "lucide-react";
 import { paginationConfig } from "@/config/pagination";
 
@@ -75,7 +76,7 @@ export default function QuickFiltersPage() {
 
   // Date and report states
   const [asOfDate, setAsOfDate] = useState<string>("");
-  const [reportDate, setReportDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [reportDate, setReportDate] = useState<string>(getServerDate().toISOString().slice(0, 10));
   const [reportData, setReportData] = useState<Record<string, FilteredPersonnel[]> | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -393,7 +394,7 @@ export default function QuickFiltersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `quick-filter-results-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `quick-filter-results-${getServerDate().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -9,7 +9,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Upload, Calendar, CheckCircle, XCircle, Clock, FileSpreadsheet, FileCheck, AlertCircle, X, Info, CheckCircle2, FileX, FileText, BarChart3, UserCheck, UserCog, AlertTriangle, Check, X as XIcon, Briefcase, Trash2, Plus } from 'lucide-react';
 import { paginationConfig } from '@/config/pagination';
-import { formatDate } from '@/lib/utils';
+import { formatDate, parseDate } from '@/lib/utils';
 
 interface LeaveType {
   id: number;
@@ -331,15 +331,11 @@ export default function LeaveManagementPage() {
       );
       
       const usedDays = approvedRequests.reduce((total, req) => {
-        try {
-          const start = new Date(req.startDate);
-          const end = new Date(req.endDate);
-          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-          return total + Math.max(0, days);
-        } catch (error) {
-  
-          return total;
-        }
+        const start = parseDate(req.startDate);
+        const end = parseDate(req.endDate);
+        if (!start || !end) return total;
+        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return total + Math.max(0, days);
       }, 0);
 
       const remainingDays = Math.max(0, type.max_days - usedDays);
@@ -487,10 +483,14 @@ export default function LeaveManagementPage() {
     if (typeof dateVal === 'string') {
       const match = dateVal.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (match) return match[0];
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return '';
+      const d = parseDate(dateVal);
+      if (!d) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
     }
-    const d = typeof dateVal === 'string' ? new Date(dateVal) : dateVal;
+    const d = dateVal;
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
@@ -652,15 +652,12 @@ export default function LeaveManagementPage() {
   };
 
   const calculateDays = (startDate: string, endDate: string) => {
-    try {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const timeDiff = end.getTime() - start.getTime();
-      const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-      return days > 0 ? days : 0;
-    } catch (error) {
-      return 0;
-    }
+    const start = parseDate(startDate);
+    const end = parseDate(endDate);
+    if (!start || !end) return 0;
+    const timeDiff = end.getTime() - start.getTime();
+    const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+    return days > 0 ? days : 0;
   };
 
   if (loading) {

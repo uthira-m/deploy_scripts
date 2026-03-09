@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,6 +11,7 @@ import { Pagination } from "@/components/Pagination";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
+import { savePersonnelListState, loadPersonnelListState, buildReturnUrl } from "@/lib/personnelListState";
 import { calculateServiceDuration, validatePersonnelDob } from "@/lib/utils";
 import { getServerDate } from "@/lib/serverTime";
 import { paginationConfig } from "@/config/pagination";
@@ -437,6 +438,7 @@ export default function PersonnelPage() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const skipInitialFetchRef = useRef(false);
   const { user, logout, login, isAuthenticated } = useAuth();
   const { canModify, isAdmin } = usePermissions();
   console.log("can modify",canModify,isAdmin);
@@ -532,6 +534,40 @@ export default function PersonnelPage() {
     }
   }, [searchParams]);
 
+  // Restore filter state when returning from personnel details
+  useEffect(() => {
+    if (searchParams.get("restore") === "1") {
+      skipInitialFetchRef.current = true;
+      const saved = loadPersonnelListState("personnel");
+      if (saved) {
+        const search = typeof saved.searchTerm === "string" ? saved.searchTerm : "";
+        setSearchTerm(search);
+        setDebouncedSearchTerm(search);
+        if (typeof saved.page === "number") setPage(saved.page);
+        if (typeof saved.limit === "number") setLimit(saved.limit);
+        if (typeof saved.statusFilter === "string") setStatusFilter(saved.statusFilter);
+        if (typeof saved.rankFilter === "string") setRankFilter(saved.rankFilter);
+        if (typeof saved.bloodGroupFilter === "string") setBloodGroupFilter(saved.bloodGroupFilter);
+        if (saved.filters && typeof saved.filters === "object") setFilters(saved.filters as typeof filters);
+        router.replace("/dashboard/personnel", { scroll: false });
+      } else {
+        skipInitialFetchRef.current = false;
+      }
+    }
+  }, [searchParams]);
+
+  const saveListStateAndNavigate = (personId: number) => {
+    savePersonnelListState("personnel", {
+      searchTerm,
+      page,
+      limit,
+      statusFilter,
+      rankFilter,
+      bloodGroupFilter,
+      filters,
+    });
+  };
+
   // Debounce search term to avoid API calls on every keystroke
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
@@ -540,6 +576,10 @@ export default function PersonnelPage() {
 
   // Fetch personnel data on component mount and when page/search/filters change
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
     fetchPersonnel();
     fetchRanks();
     fetchRankCategories();
@@ -1094,7 +1134,7 @@ export default function PersonnelPage() {
             <div className="flex-1 min-w-0">
               <input
                 type="text"
-                placeholder="Search by name, army number, or rank..."
+                placeholder="Search by name, army number"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -1230,7 +1270,8 @@ export default function PersonnelPage() {
                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base">{(page - 1) * limit + index + 1}</td>
                         <td className="px-4 lg:px-6 py-3 lg:py-4">
                           <Link
-                            href={`/dashboard/personnel/${person.id}`}
+                            href={`/dashboard/personnel/${person.id}?from=personnel&returnTo=${encodeURIComponent(buildReturnUrl("personnel"))}`}
+                            onClick={() => saveListStateAndNavigate(person.id)}
                             className="text-blue-400 hover:text-blue-300 font-mono text-sm lg:text-base transition-colors cursor-pointer"
                             title="View Details"
                           >
@@ -1328,8 +1369,8 @@ export default function PersonnelPage() {
                 }}
               >
                 <Link
-                  href={`/dashboard/personnel/${person.id}`}
-                  onClick={closeMenu}
+                  href={`/dashboard/personnel/${person.id}?from=personnel&returnTo=${encodeURIComponent(buildReturnUrl("personnel"))}`}
+                  onClick={() => { saveListStateAndNavigate(person.id); closeMenu(); }}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
                 >
                   <Eye className="w-4 h-4" />

@@ -662,12 +662,8 @@
   /* background: linear-gradient(270deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%); */
 }
 
-.login-marquee-track {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: max-content;
-  animation: login-marquee-scroll 30s linear infinite;
+.login-marquee-wrapper marquee {
+  white-space: nowrap;
 }
 
 .login-marquee-logo {
@@ -695,15 +691,6 @@
   opacity: 0.9;
   filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.5));
   user-select: none;
-}
-
-@keyframes login-marquee-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
 }
 
 /* ANIMATION */

@@ -11,7 +11,8 @@ import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { adminsService, api, dashboardService } from "@/lib/api";
 import { paginationConfig } from "@/config/pagination";
-import { validatePersonnelDob } from "@/lib/utils";
+import { validatePersonnelDob, parseDate } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface Personnel {
@@ -277,9 +278,9 @@ export default function AdminsPage() {
 
   const formatServiceDuration = (doe?: string) => {
     if (!doe) return "-";
-    const startDate = new Date(doe);
-    if (Number.isNaN(startDate.getTime())) return "-";
-    const now = new Date();
+    const startDate = parseDate(doe);
+    if (!startDate) return "-";
+    const now = getServerDate();
     let years = now.getFullYear() - startDate.getFullYear();
     let months = now.getMonth() - startDate.getMonth();
     if (months < 0) {

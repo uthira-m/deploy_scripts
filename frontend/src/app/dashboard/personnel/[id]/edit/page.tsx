@@ -1295,7 +1295,14 @@ export default function EditPersonnelPage() {
                     <label className="block text-gray-200 mb-2 text-sm font-medium">Medical Category</label>
                     <select
                       value={formData.medical_category_id}
-                      onChange={(e) => setFormData({...formData, medical_category_id: e.target.value})}
+                      onChange={(e) => {
+                        const newMedCatId = e.target.value;
+                        const updates: typeof formData = { ...formData, medical_category_id: newMedCatId };
+                        if (newMedCatId && !formData.natural_category) {
+                          updates.natural_category = 'permanent';
+                        }
+                        setFormData(updates);
+                      }}
                       className="w-full appearance-none px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                     >
                       <option value="">Select Medical Category</option>
@@ -1386,7 +1393,7 @@ export default function EditPersonnelPage() {
                     >
                       <option value="">Select Nature of Category</option>
                       <option value="temporary">Temporary</option>
-                      <option value="permanent">Permanet</option>
+                      <option value="permanent">Permanent</option>
                     </select>
                     <svg
                       className="absolute right-4 top-13 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
@@ -1472,7 +1479,7 @@ export default function EditPersonnelPage() {
                         value={sportsFormData.year_of_participation}
                         onChange={(e) => {
                           const selectedDate = e.target.value;
-                          const today = new Date().toISOString().split('T')[0];
+                          const today = getServerDate().toISOString().split('T')[0];
                           
                           if (selectedDate > today) {
                             setError("Year of participation cannot be a future date");
@@ -1483,7 +1490,7 @@ export default function EditPersonnelPage() {
                           setSportsFormData({...sportsFormData, year_of_participation: selectedDate});
                           setError(null);
                         }}
-                        max={new Date().toISOString().split('T')[0]}
+                        max={getServerDate().toISOString().split('T')[0]}
                         className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent backdrop-blur-sm transition-all duration-200"
                       />
                     </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { dashboardService } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { ClipboardList, Calendar, Loader2, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -85,7 +87,7 @@ const TRADE_PDF_LABELS: Record<string, string> = {
 
 export default function ParadeStatePage() {
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
+    getServerDate().toISOString().split("T")[0]
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,21 +133,13 @@ export default function ParadeStatePage() {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
-    const formatDateStr = (s: string) => {
-      const d = new Date(s);
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    };
-
     // Compact header for A3 landscape report
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("PARADE STATE REPORT", pageWidth / 2, 8, { align: "center" });
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(`Date: ${formatDateStr(selectedDate)}`, pageWidth / 2, 13, { align: "center" });
+    doc.text(`Date: ${formatDate(selectedDate)}`, pageWidth / 2, 13, { align: "center" });
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.2);
     doc.line(margin, 16, pageWidth - margin, 16);

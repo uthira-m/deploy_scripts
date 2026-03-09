@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RemarksTooltip from '@/components/RemarksTooltip';
-import { formatDate } from '@/lib/utils';
+import { formatDate, parseDate } from '@/lib/utils';
 import { BookOpen } from 'lucide-react';
 
 interface Course {
@@ -64,10 +64,10 @@ export default function MyCoursesPage() {
       return '--';
     }
 
-    const start = new Date(course.start_date);
-    const end = new Date(getCourseEndDate(course) as string);
+    const start = parseDate(course.start_date);
+    const end = parseDate(getCourseEndDate(course) as string);
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!start || !end) {
       return '--';
     }
 

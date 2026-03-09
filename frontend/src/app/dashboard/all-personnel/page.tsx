@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Pagination } from "@/components/Pagination";
 import { allPersonnelService } from "@/lib/api";
+import { savePersonnelListState, loadPersonnelListState, buildReturnUrl } from "@/lib/personnelListState";
 import { paginationConfig } from "@/config/pagination";
 import { calculateServiceDuration } from "@/lib/utils";
 
@@ -59,12 +60,43 @@ export default function AllPersonnelPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
+  const [formationCategoryFilter, setFormationCategoryFilter] = useState("");
   const [page, setPage] = useState(paginationConfig.DEFAULT_PAGE);
   const [limit, setLimit] = useState(paginationConfig.DEFAULT_LIMIT);
   const [total, setTotal] = useState(0);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const skipInitialFetchRef = useRef(false);
 
   const statusOptions = ['Available', 'On Leave', 'On ERE', 'On Course', 'Out Station'];
+
+  // Restore filter state when returning from personnel details
+  useEffect(() => {
+    if (searchParams.get("restore") === "1") {
+      skipInitialFetchRef.current = true;
+      const saved = loadPersonnelListState("all-personnel");
+      if (saved) {
+        const search = typeof saved.searchTerm === "string" ? saved.searchTerm : "";
+        setSearchTerm(search);
+        setDebouncedSearch(search);
+        if (typeof saved.page === "number") setPage(saved.page);
+        if (typeof saved.limit === "number") setLimit(saved.limit);
+        if (typeof saved.statusFilter === "string") setStatusFilter(saved.statusFilter);
+        router.replace("/dashboard/all-personnel", { scroll: false });
+      } else {
+        skipInitialFetchRef.current = false;
+      }
+    }
+  }, [searchParams]);
+
+  const saveListStateAndNavigate = () => {
+    savePersonnelListState("all-personnel", {
+      searchTerm,
+      page,
+      limit,
+      statusFilter,
+    });
+  };
 
   const getDisplayStatus = (person: Personnel) => {
     return person.dynamic_status || "Available";
@@ -83,9 +115,11 @@ export default function AllPersonnelPage() {
 
   useEffect(() => {
     const queryStatus = deriveStatusFilterValue(searchParams.get("status"));
+    const queryFormation = searchParams.get("formation_category") || "";
     if (queryStatus) {
       setStatusFilter(queryStatus);
     }
+    setFormationCategoryFilter(queryFormation);
   }, [searchParams]);
 
   // Debounce search to avoid excessive API calls while typing
@@ -98,16 +132,21 @@ export default function AllPersonnelPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, statusFilter]);
+  }, [debouncedSearch, statusFilter, formationCategoryFilter]);
 
-  // Only fetch when filters are applied (status or search) - no API call on initial load
-  const hasActiveFilters = !!(statusFilter?.trim() || debouncedSearch?.trim());
+  // Fetch when "All" is selected (statusFilter empty), a specific status is selected, or search is applied
+  const hasActiveFilters = statusFilter === '' || !!statusFilter?.trim() || !!debouncedSearch?.trim();
 
   useEffect(() => {
     if (!hasActiveFilters) {
       setAllPersonnel([]);
       setTotal(0);
       setLoading(false);
+      return;
+    }
+
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
       return;
     }
 
@@ -119,8 +158,11 @@ export default function AllPersonnelPage() {
         setError("");
 
         const filters: Record<string, string> = {};
-        if (statusFilter && statusFilter.trim()) {
+        if (statusFilter && statusFilter.trim() && statusFilter !== 'All') {
           filters.status = statusFilter.trim();
+          if (formationCategoryFilter && formationCategoryFilter.trim()) {
+            filters.formation_category = formationCategoryFilter.trim();
+          }
         }
 
         const response = await allPersonnelService.getAllPersonnel(
@@ -157,7 +199,7 @@ export default function AllPersonnelPage() {
 
     fetchAllPersonnel();
     return () => controller.abort();
-  }, [page, limit, debouncedSearch, statusFilter]);
+  }, [page, limit, debouncedSearch, statusFilter, formationCategoryFilter]);
 
   return (
     <ProtectedRoute>
@@ -194,7 +236,7 @@ export default function AllPersonnelPage() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search by name, army number, rank, or company..."
+                placeholder="Search by name, army number"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -205,11 +247,11 @@ export default function AllPersonnelPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative">
                 <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  value={statusFilter || 'All'}
+                  onChange={(e) => setStatusFilter(e.target.value === 'All' ? '' : e.target.value)}
                   className="w-full sm:w-auto px-4 py-2 pr-10 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none backdrop-blur-sm"
                 >
-                  {/* <option value="">All Status</option> */}
+                  <option value="">All</option>
                   {statusOptions.map((status) => (
                     <option key={status} value={status}>
                       {status}
@@ -226,6 +268,20 @@ export default function AllPersonnelPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
+              {statusFilter === 'Out Station' && formationCategoryFilter && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 text-sm">Formation:</span>
+                  <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 text-sm font-medium">
+                    {formationCategoryFilter}
+                  </span>
+                  <Link
+                    href="/dashboard/all-personnel?status=Out Station"
+                    className="text-gray-400 hover:text-white text-sm"
+                  >
+                    Clear
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -311,7 +367,8 @@ export default function AllPersonnelPage() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <Link
-                            href={`/dashboard/personnel/${person.id}`}
+                            href={`/dashboard/personnel/${person.id}?from=all-personnel&returnTo=${encodeURIComponent(buildReturnUrl("all-personnel"))}`}
+                            onClick={saveListStateAndNavigate}
                             className="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                             title="View Details"
                           >

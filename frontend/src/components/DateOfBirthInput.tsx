@@ -39,7 +39,7 @@ export default function DateOfBirthInput({
 }: DateOfBirthInputProps) {
   // Calculate max date (youngest allowed = minAge years ago)
   const maxDate = useMemo(() => {
-    const today = new Date();
+    const today = getServerDate();
     if (minAge === 0) {
       return today.toISOString().split("T")[0];
     }

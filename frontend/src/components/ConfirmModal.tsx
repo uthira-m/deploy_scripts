@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -73,11 +74,11 @@ export default function ConfirmModal({
     }
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={onCancel}
       ></div>
 
@@ -150,5 +151,7 @@ export default function ConfirmModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 

@@ -506,6 +506,23 @@ class PersonnelService {
     return this.api.delete(`/family-details/${familyDetailId}`);
   }
 
+  // Mental Well-Being records
+  async getMentalWellBeing(personnelId: number) {
+    return this.api.get(`/personnel/${personnelId}/mental-well-being`);
+  }
+
+  async createMentalWellBeing(data: any) {
+    return this.api.post('/mental-well-being', data);
+  }
+
+  async updateMentalWellBeing(id: number, data: any) {
+    return this.api.put(`/mental-well-being/${id}`, data);
+  }
+
+  async deleteMentalWellBeing(id: number) {
+    return this.api.delete(`/mental-well-being/${id}`);
+  }
+
   // Get personnel documents
   async getPersonnelDocuments(armyNo: string) {
     return this.api.get(`/documents/army/${armyNo}`);

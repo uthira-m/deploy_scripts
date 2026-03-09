@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -200,11 +201,7 @@ export default function CompanyDetailPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Appointment Date</p>
                     <p className="text-white font-medium">
-                      {commander ? new Date(commander.appointment_date).toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      }) : '--'}
+                      {commander ? formatDate(commander.appointment_date) : '--'}
                     </p>
                   </div>
                 </div>
@@ -281,11 +278,7 @@ export default function CompanyDetailPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-300">
-                          {new Date(cp.appointment_date).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {formatDate(cp.appointment_date)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

@@ -660,7 +660,7 @@ export default function ImageManagementPage() {
                         src={`${BACKEND_URL}${image.file_path}`}
                         alt={image.filename}
                         fill
-                        className="object-cover"
+                        className=""
                         sizes="(max-width: 340px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
                       <button

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { personnelService, api, medicalCategoryService } from "@/lib/api";
+import { allPersonnelService, api, medicalCategoryService } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import Sidebar from "@/components/Sidebar";
 
@@ -12,6 +12,7 @@ interface Personnel {
   army_no: string;
   name: string;
   rank: string;
+  category?: string; // Officers, JCO, OR
   rankInfo?: {
     id: number;
     name: string;
@@ -64,24 +65,19 @@ export default function LMCPersonnelPage() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch all personnel - we'll filter by natural_category on the frontend
-      const response = await personnelService.getAllPersonnel(1, 1000, '', {});
-      
+
+      // Fetch all LMC personnel (Officers + JCO + OR) with natural_category filter
+      const response = await allPersonnelService.getAllPersonnel(1, 1000, '', {
+        natural_category: 'permanent,temporary'
+      });
+
       if (response.status === 'success' && response.data?.personnel) {
-        // Filter personnel that have natural_category set (permanent or temporary)
         const rawPersonnel = response.data.personnel;
-        const lmcPersonnel = rawPersonnel
-          .filter(
-            (person: Personnel) => person.natural_category && 
-            (person.natural_category.toLowerCase() === 'permanent' || 
-             person.natural_category.toLowerCase() === 'temporary')
-          )
-          .map((person: any) => ({
-            ...person,
-            companies: person.company_personnel?.map((cp: any) => cp.company).filter((c: any) => c) || [],
-            medicalCategory: person.medical_category || person.medicalCategory
-          }));
+        const lmcPersonnel = rawPersonnel.map((person: any) => ({
+          ...person,
+          companies: person.company_personnel?.map((cp: any) => cp.company).filter((c: any) => c) || [],
+          medicalCategory: person.medical_category || person.medicalCategory
+        }));
         setPersonnel(lmcPersonnel);
       } else {
         setPersonnel([]);
@@ -108,7 +104,7 @@ export default function LMCPersonnelPage() {
 
   const fetchMedicalCategories = async () => {
     try {
-      const response = await medicalCategoryService.getAllMedicalCategories();
+      const response = await medicalCategoryService.getAllMedicalCategoriesForDropdown();
       if (response.status === 'success' && response.data) {
         setMedicalCategories(response.data.medicalCategories || []);
       }
@@ -139,7 +135,7 @@ export default function LMCPersonnelPage() {
   // Filter personnel by natural category and applied filters
   const permanentPersonnel = useMemo(() => {
     return personnel.filter(
-      (person) => 
+      (person) =>
         person.natural_category?.toLowerCase() === 'permanent' &&
         matchesCompanyFilter(person) &&
         matchesMedicalCategoryFilter(person)
@@ -148,7 +144,7 @@ export default function LMCPersonnelPage() {
 
   const temporaryPersonnel = useMemo(() => {
     return personnel.filter(
-      (person) => 
+      (person) =>
         person.natural_category?.toLowerCase() === 'temporary' &&
         matchesCompanyFilter(person) &&
         matchesMedicalCategoryFilter(person)
@@ -184,9 +180,10 @@ export default function LMCPersonnelPage() {
                 <thead className="bg-white/10">
                   <tr>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">S No.</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Category</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Army No.</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Rank</th>
-                    <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Personnel Name</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Name</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Company</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Medical Category</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-left text-white font-semibold text-sm lg:text-base">Diagnose</th>
@@ -201,6 +198,11 @@ export default function LMCPersonnelPage() {
                   {data.map((person, index) => (
                     <tr key={person.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base">{index + 1}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
+                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-white/10">
+                          {person.category || 'OR'}
+                        </span>
+                      </td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-white font-mono text-sm lg:text-base">{person.army_no || '--'}</td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-gray-300 text-sm lg:text-base">
                         {person.rankInfo?.name || person.rank || '--'}
@@ -253,7 +255,7 @@ export default function LMCPersonnelPage() {
                 LMC Personnel
               </h1>
               <p className="text-gray-400">
-                View personnel categorized by permanent and temporary medical categories
+                View all LMC personnel (Officers, JCO, OR) categorized by permanent and temporary medical categories
               </p>
             </div>
 

@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -11,7 +11,8 @@ import { Pagination } from "@/components/Pagination";
 import DateOfBirthInput from "@/components/DateOfBirthInput";
 import DateOfEntryInput from "@/components/DateOfEntryInput";
 import { officersService, personnelService, rankService, rankCategoryService, medicalCategoryService, api } from "@/lib/api";
-import { validatePersonnelDob } from "@/lib/utils";
+import { savePersonnelListState, loadPersonnelListState, buildReturnUrl } from "@/lib/personnelListState";
+import { validatePersonnelDob, parseDate } from "@/lib/utils";
 import { getServerDate } from "@/lib/serverTime";
 import { paginationConfig } from "@/config/pagination";
 import { MoreVertical, Eye, Trash2, KeyRound } from "lucide-react";
@@ -355,8 +356,40 @@ export default function OfficersPage() {
     others: false
   });
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const skipInitialFetchRef = useRef(false);
   const { user } = useAuth();
   const { canModify, isAdmin } = usePermissions();
+
+  // Restore filter state when returning from personnel details
+  useEffect(() => {
+    if (searchParams.get("restore") === "1") {
+      skipInitialFetchRef.current = true;
+      const saved = loadPersonnelListState("officers");
+      if (saved) {
+        if (typeof saved.searchTerm === "string") setSearchTerm(saved.searchTerm);
+        if (typeof saved.page === "number") setPage(saved.page);
+        if (typeof saved.limit === "number") setLimit(saved.limit);
+        if (typeof saved.statusFilter === "string") setStatusFilter(saved.statusFilter);
+        if (typeof saved.rankFilter === "string") setRankFilter(saved.rankFilter);
+        if (saved.filters && typeof saved.filters === "object") setFilters(saved.filters as typeof filters);
+        router.replace("/dashboard/officers", { scroll: false });
+      } else {
+        skipInitialFetchRef.current = false;
+      }
+    }
+  }, [searchParams]);
+
+  const saveListStateAndNavigate = () => {
+    savePersonnelListState("officers", {
+      searchTerm,
+      page,
+      limit,
+      statusFilter,
+      rankFilter,
+      filters,
+    });
+  };
 
   // Check if any filters are applied
   const hasActiveFilters = () => {
@@ -387,6 +420,10 @@ export default function OfficersPage() {
   };
 
   useEffect(() => {
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
     fetchOfficers();
     fetchRanks();
     fetchCompanies();
@@ -651,8 +688,8 @@ export default function OfficersPage() {
 
   const formatServiceDuration = (doe?: string) => {
     if (!doe) return "-";
-    const startDate = new Date(doe);
-    if (Number.isNaN(startDate.getTime())) return "-";
+    const startDate = parseDate(doe);
+    if (!startDate) return "-";
     const now = getServerDate();
     let years = now.getFullYear() - startDate.getFullYear();
     let months = now.getMonth() - startDate.getMonth();
@@ -716,7 +753,7 @@ export default function OfficersPage() {
             <div className="flex-1 min-w-0">
               <input
                 type="text"
-                placeholder="Search by name, army no, rank"
+                placeholder="Search by name, army no"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -817,7 +854,8 @@ export default function OfficersPage() {
                       <td className="px-4 py-3 text-sm text-gray-300">{startIndex + index + 1}</td>
                       <td className="px-4 py-3 text-sm">
                         <Link
-                          href={`/dashboard/personnel/${person.id}?from=officers`}
+                          href={`/dashboard/personnel/${person.id}?from=officers&returnTo=${encodeURIComponent(buildReturnUrl("officers"))}`}
+                          onClick={saveListStateAndNavigate}
                           className="text-blue-400 hover:text-blue-300 font-mono transition-colors cursor-pointer"
                           title="View Details"
                         >
@@ -915,8 +953,8 @@ export default function OfficersPage() {
                 }}
               >
                 <Link
-                  href={`/dashboard/personnel/${person.id}?from=officers`}
-                  onClick={closeMenu}
+                  href={`/dashboard/personnel/${person.id}?from=officers&returnTo=${encodeURIComponent(buildReturnUrl("officers"))}`}
+                  onClick={() => { saveListStateAndNavigate(); closeMenu(); }}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
                 >
                   <Eye className="w-4 h-4" />

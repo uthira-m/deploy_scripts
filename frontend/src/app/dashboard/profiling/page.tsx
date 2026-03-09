@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { personnelService, personnelJCOService, leaveService } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 import { config } from "@/config/env";
 
 interface Personnel {
@@ -205,8 +206,8 @@ export default function GlobalProfilingPage() {
 
   const computeRange = (): { from: Date; to: Date } | null => {
     if (dateRangeType === "lastYear") {
-      const to = new Date();
-      const from = new Date();
+      const to = getServerDate();
+      const from = getServerDate();
       from.setFullYear(to.getFullYear() - 1);
       return { from, to };
     }
@@ -447,7 +448,7 @@ export default function GlobalProfilingPage() {
 
   const displayMonths = useMemo<DisplayMonth[]>(() => {
     // Default: Jan–Dec of current year
-    const base = effectiveFrom || new Date();
+    const base = effectiveFrom || getServerDate();
     const startMonth = effectiveFrom ? effectiveFrom.getMonth() : 0;
     const baseYear = base.getFullYear();
 
@@ -574,8 +575,8 @@ export default function GlobalProfilingPage() {
             </div>
           )}
 
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
+            <div className="flex-1 w-full lg:w-auto">
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Army Number
               </label>
@@ -682,7 +683,7 @@ export default function GlobalProfilingPage() {
                     >
                       {effectiveFrom
                         ? effectiveFrom.getFullYear()
-                        : new Date().getFullYear()}
+                        : getServerDate().getFullYear()}
                     </td>
                   </tr>
                   <tr>
@@ -929,7 +930,7 @@ export default function GlobalProfilingPage() {
                         Level
                       </th>
                       <th className="border border-gray-300 px-2 py-1">
-                        Skill
+                        Duration
                       </th>
                     </tr>
                   </thead>

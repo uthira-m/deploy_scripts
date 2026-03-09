@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
+import { getServerDate } from '@/lib/serverTime';
 import { usePermissions } from '@/hooks/usePermissions';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -69,7 +71,7 @@ export default function CompaniesPage() {
   const [personnelLoading, setPersonnelLoading] = useState(false);
   const [assignmentData, setAssignmentData] = useState<AssignmentFormData>({
     personnel_id: '',
-    appointment_date: new Date().toISOString().split('T')[0]
+    appointment_date: getServerDate().toISOString().split('T')[0]
   });
 
   useEffect(() => {
@@ -184,12 +186,12 @@ export default function CompaniesPage() {
     if (company.commander) {
       setAssignmentData({
         personnel_id: company.commander.personnel_id.toString(),
-        appointment_date: new Date().toISOString().split('T')[0]
+        appointment_date: getServerDate().toISOString().split('T')[0]
       });
     } else {
       setAssignmentData({
         personnel_id: '',
-        appointment_date: new Date().toISOString().split('T')[0]
+        appointment_date: getServerDate().toISOString().split('T')[0]
       });
     }
     
@@ -234,7 +236,7 @@ export default function CompaniesPage() {
       setShowAssignModal(false);
       setAssignmentData({
         personnel_id: '',
-        appointment_date: new Date().toISOString().split('T')[0]
+        appointment_date: getServerDate().toISOString().split('T')[0]
       });
       setPersonnel([]);
       await fetchCompanies(); // Refresh companies to update button state
@@ -372,11 +374,7 @@ export default function CompaniesPage() {
                       </td>
                       {/* <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-300">
-                          {new Date(company.created_at).toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })}
+                          {formatDate(company.created_at)}
                         </span>
                       </td> */}
                       {canAssignCompany && (
@@ -572,7 +570,7 @@ export default function CompaniesPage() {
                     setPersonnel([]);
                     setAssignmentData({
                       personnel_id: '',
-                      appointment_date: new Date().toISOString().split('T')[0]
+                      appointment_date: getServerDate().toISOString().split('T')[0]
                     });
                   }}
                   className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg border border-white/20 transition-colors duration-200"
