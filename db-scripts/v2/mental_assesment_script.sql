@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS mental_well_being (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_mental_well_being_person
-    FOREIGN KEY (person_id) REFERENCES personnel(id)
+    FOREIGN KEY (person_id) REFERENCES personnel_profile(id)
     ON DELETE CASCADE
 );
 
@@ -55,5 +55,5 @@ CREATE INDEX IF NOT EXISTS idx_mental_well_being_next_review_date
 INSERT INTO grades (name, description, is_active, created_at, updated_at)
 VALUES ('AX', 'AX grade', TRUE, NOW(), NOW());
 
-INSERT INTO leave_types (code, name, "desc", max_days, is_active, created_at, updated_at)
+INSERT INTO leave_types (code, name, description, max_days, is_active, created_at, updated_at)
 VALUES ('LT007', 'Advl', 'Advl leave', 0, TRUE, NOW(), NOW());
