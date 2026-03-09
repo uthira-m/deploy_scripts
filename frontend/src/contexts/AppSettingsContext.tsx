@@ -10,6 +10,7 @@ const DEFAULT_LOGO_PATH = "/assets/logo.png"; // Fallback to assets folder
 interface AppSettingsContextType {
   appName: string;
   appLogoUrl: string | null;
+  assistNumber: string | null;
   setAppName: (name: string) => Promise<void>;
   setAppLogoUrl: (url: string | null) => Promise<void>;
   resetToDefaults: () => Promise<void>;
@@ -22,6 +23,7 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(und
 export function AppSettingsProvider({ children }: { children: React.ReactNode }) {
   const [appName, setAppNameState] = useState<string>(DEFAULT_APP_NAME);
   const [appLogoUrl, setAppLogoUrlState] = useState<string | null>(null);
+  const [assistNumber, setAssistNumberState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchSettings = useCallback(async () => {
@@ -38,15 +40,18 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         setAppLogoUrlState(
           result.settings.app_logo_url || null
         );
+        setAssistNumberState(result.settings.assist_number || null);
       } else {
         // Fallback to defaults if fetch fails
         setAppNameState(DEFAULT_APP_NAME);
         setAppLogoUrlState(null);
+        setAssistNumberState(null);
       }
     } catch (error) {
       console.error("Failed to fetch app settings:", error);
       setAppNameState(DEFAULT_APP_NAME);
       setAppLogoUrlState(null);
+      setAssistNumberState(null);
     } finally {
       setLoading(false);
     }
@@ -78,6 +83,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const resetToDefaults = useCallback(async () => {
     setAppNameState(DEFAULT_APP_NAME);
     setAppLogoUrlState(null);
+    setAssistNumberState(null);
     try {
       await updateAppSettings({ 
         app_name: DEFAULT_APP_NAME,
@@ -93,6 +99,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
       value={{
         appName,
         appLogoUrl,
+        assistNumber,
         setAppName,
         setAppLogoUrl,
         resetToDefaults,

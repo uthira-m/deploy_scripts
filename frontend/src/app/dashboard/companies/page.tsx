@@ -9,6 +9,22 @@ import ConfirmModal from '@/components/ConfirmModal';
 import { useNotification } from '@/contexts/NotificationContext';
 import { Building2 } from 'lucide-react';
 
+// Company display order (include backend variants for matching)
+const COMPANY_ORDER = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Support', 'Head Quarters', 'Headquarter', 'Att'];
+
+const sortCompaniesByOrder = <T extends { company_name: string }>(companies: T[]): T[] => {
+  return [...companies].sort((a, b) => {
+    const aVal = a.company_name?.trim() || '';
+    const bVal = b.company_name?.trim() || '';
+    const aIdx = COMPANY_ORDER.findIndex((c) => c.toLowerCase() === aVal.toLowerCase());
+    const bIdx = COMPANY_ORDER.findIndex((c) => c.toLowerCase() === bVal.toLowerCase());
+    if (aIdx === -1 && bIdx === -1) return aVal.localeCompare(bVal);
+    if (aIdx === -1) return 1;
+    if (bIdx === -1) return -1;
+    return aIdx - bIdx;
+  });
+};
+
 interface Company {
   id: number;
   company_name: string;
@@ -87,7 +103,7 @@ export default function CompaniesPage() {
 
       const response = await api.get(`/company?${params.toString()}`);
       if (response.status === 'success') {
-        // Add commander info to each company
+        // Add commander info to each company and sort by company order
         const companiesWithCommander = response.data.companies.map((company: any) => {
           const commander = company.company_personnel?.find((cp: any) => cp.role === 'Commander' && cp.status === 'Active');
           return {
@@ -95,7 +111,7 @@ export default function CompaniesPage() {
             commander: commander || null
           };
         });
-        setCompanies(companiesWithCommander);
+        setCompanies(sortCompaniesByOrder(companiesWithCommander));
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch companies');

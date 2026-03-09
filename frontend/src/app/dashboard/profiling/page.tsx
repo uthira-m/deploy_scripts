@@ -6,7 +6,7 @@ import { Search, Printer } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { personnelService, personnelJCOService, leaveService } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDurationDatesDDMMYYYY } from "@/lib/utils";
 import { getServerDate } from "@/lib/serverTime";
 import { config } from "@/config/env";
 
@@ -954,7 +954,9 @@ export default function GlobalProfilingPage() {
                         {droneProficiency?.level || "—"}
                       </td>
                       <td className="border border-gray-300 px-2 py-1">
-                        {droneProficiency?.duration || droneProficiency?.location || "—"}
+                        {droneProficiency?.duration
+                          ? formatDurationDatesDDMMYYYY(droneProficiency.duration)
+                          : droneProficiency?.location || "—"}
                       </td>
                     </tr>
                   </tbody>

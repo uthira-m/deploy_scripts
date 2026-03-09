@@ -13,6 +13,30 @@ import { config } from "@/config/env";
 import { formatDate, parseToTimestamp } from "@/lib/utils";
 import { getServerDate } from "@/lib/serverTime";
 
+// Company display order for charts and lists (include backend variants for matching)
+const COMPANY_ORDER = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Support', 'Head Quarters', 'Headquarter', 'Att'];
+
+const getCompanyOrderIndex = (val: string): number => {
+  const v = val.trim();
+  const idx = COMPANY_ORDER.findIndex((c) => c.toLowerCase() === v.toLowerCase());
+  return idx;
+};
+
+const sortByCompanyOrder = <T extends { company?: string; name?: string }>(items: T[], key: 'company' | 'name' = 'company'): T[] => {
+  return [...items].sort((a, b) => {
+    const aVal = (key === 'company' ? a.company : a.name) || '';
+    const bVal = (key === 'company' ? b.company : b.name) || '';
+    if (aVal === 'Total') return 1;
+    if (bVal === 'Total') return -1;
+    const aIdx = getCompanyOrderIndex(aVal);
+    const bIdx = getCompanyOrderIndex(bVal);
+    if (aIdx === -1 && bIdx === -1) return aVal.localeCompare(bVal);
+    if (aIdx === -1) return 1;
+    if (bIdx === -1) return -1;
+    return aIdx - bIdx;
+  });
+};
+
 // Greeting messages - shown randomly per day in the text marquee
 const GREETING_MESSAGES = [
   'Hard work, courage, and honor – have a wonderful day soldier.',
@@ -55,7 +79,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Dashboard() {
-  const { appName } = useAppSettings();
+  const { appName, assistNumber } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [stats, setStats] = useState([
     { title: "Total Personnel", value: "0", change: "+8%", icon: Users, description: "Total Personnel", color: "from-indigo-500 to-indigo-600", borderColor: "indigo-500", categoryBreakdown: "00-00-00" },
@@ -329,18 +353,7 @@ export default function Dashboard() {
 
         if (response.status === 'success' && response.data) {
           const data = response.data || [];
-          const companyOrder = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Headquarter', 'Support'];
-          const sorted = [...data].sort((a, b) => {
-            if (a.company === 'Total') return 1;
-            if (b.company === 'Total') return -1;
-            const aIdx = companyOrder.indexOf(a.company);
-            const bIdx = companyOrder.indexOf(b.company);
-            if (aIdx === -1 && bIdx === -1) return (a.company || '').localeCompare(b.company || '');
-            if (aIdx === -1) return 1;
-            if (bIdx === -1) return -1;
-            return aIdx - bIdx;
-          });
-          setLeaveArrivalsData(sorted);
+          setLeaveArrivalsData(sortByCompanyOrder(data, 'company'));
         }
       } catch (error) {
         console.error('Error fetching leave arrivals data:', error);
@@ -387,13 +400,13 @@ export default function Dashboard() {
         const response = await dashboardService.getCompanyPersonnelCount();
         
         if (response.status === 'success' && response.data) {
-          // Add colors to chart data
+          // Add colors to chart data and sort by company order
           const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#14B8A6'];
           const chartData = (response.data.chartData || []).map((item: any, index: number) => ({
             ...item,
             color: colors[index % colors.length]
           }));
-          setCompanyPersonnelData(chartData);
+          setCompanyPersonnelData(sortByCompanyOrder(chartData, 'name'));
         }
       } catch (error) {
         console.error('Error fetching company personnel count:', error);
@@ -426,7 +439,7 @@ export default function Dashboard() {
             onCourse: item['On Course'] || 0,
             outStation: item['Out Station'] || 0
           }));
-          setCompanyStatusData(normalizedData);
+          setCompanyStatusData(sortByCompanyOrder(normalizedData, 'company'));
         } else {
           setCompanyStatusData([]);
         }
@@ -1040,10 +1053,10 @@ export default function Dashboard() {
                     <span className="text-2xl">👋</span>
                     {getGreetingForToday()}
                   </span>
-                  {/* Contact Info */}
+                  {/* Contact Info - number from AppSettings (assist_number) */}
                   <span className="inline-flex items-center gap-2 text-cyan-300 font-medium text-base lg:text-lg mx-8 shrink-0">
                     <span>📞</span>
-                    For any assistance contact DOCU CELL : +91 7599313770, +91 7895114479
+                    For any assistance contact DOCU CELL : {assistNumber || "+91 7599313770, +91 7895114479"}
                   </span>
                   {/* Birthdays */}
                   {!birthdaysLoading && todayBirthdays.length > 0 && (

@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ConfirmModal from "@/components/ConfirmModal";
 import { imageService, whatsNewService, getAppSettings, updateAppSettings } from "@/lib/api";
-import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, FileText } from "lucide-react";
+import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, FileText, Phone } from "lucide-react";
 import Image from "next/image";
 import { config } from "@/config/env";
 import { useNotification } from "@/contexts/NotificationContext";
@@ -23,7 +23,7 @@ type TabType = 'dashboard' | 'personnel' | 'whats-new';
 export default function ImageManagementPage() {
   const { user } = useAuth();
   const [whatsNewDocs, setWhatsNewDocs] = useState<ImageFile[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<'dashboard' | 'personnel' | 'login'>('dashboard');
+  const [selectedFolder, setSelectedFolder] = useState<'dashboard' | 'personnel' | 'login' | 'whats-new' | 'assistance-contact'>('dashboard');
   const [dashboardImages, setDashboardImages] = useState<ImageFile[]>([]);
   const [personnelImages, setPersonnelImages] = useState<ImageFile[]>([]);
   const [loginImages, setLoginImages] = useState<ImageFile[]>([]);
@@ -43,6 +43,8 @@ export default function ImageManagementPage() {
     right: { name: "", armyNumber: "", rank: "" },
   });
   const [savingLoginPersonnel, setSavingLoginPersonnel] = useState(false);
+  const [assistNumber, setAssistNumber] = useState("");
+  const [savingAssistNumber, setSavingAssistNumber] = useState(false);
 
   const BACKEND_URL = config.BACKEND_URL;
 
@@ -106,6 +108,14 @@ export default function ImageManagementPage() {
         }
       });
     }
+    if (selectedFolder === "assistance-contact") {
+      getAppSettings().then((result) => {
+        if (result.success && result.settings) {
+          const s = result.settings as Record<string, string>;
+          setAssistNumber(s.assist_number ?? "");
+        }
+      });
+    }
   }, [selectedFolder]);
 
   const handleSaveLoginPersonnel = async () => {
@@ -126,6 +136,20 @@ export default function ImageManagementPage() {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSavingLoginPersonnel(false);
+    }
+  };
+
+  const handleSaveAssistNumber = async () => {
+    try {
+      setSavingAssistNumber(true);
+      setError(null);
+      setSuccess(null);
+      await updateAppSettings({ assist_number: assistNumber.trim() });
+      notifySuccess("Assistance contact number saved successfully");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingAssistNumber(false);
     }
   };
 
@@ -376,11 +400,46 @@ export default function ImageManagementPage() {
               >
                 What&apos;s New
               </button>
+              <button
+                onClick={() => setSelectedFolder('assistance-contact')}
+                className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${
+                  selectedFolder === 'assistance-contact'
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <Phone className="w-4 h-4" />
+                Assistance Contact
+              </button>
             </div>
           </div>
 
-          {/* Upload Section - Login tab has separate Left/Right upload zones */}
-          {selectedFolder === 'login' ? (
+          {/* Assistance Contact tab - phone number management */}
+          {selectedFolder === 'assistance-contact' ? (
+            <div className="mb-6 bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Dashboard Assistance Contact</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                Set the phone number displayed in the dashboard marquee for &quot;For any assistance contact&quot;. This number is shown to all users on the main dashboard.
+              </p>
+              <div className="max-w-md">
+                <label className="block text-gray-300 text-sm font-medium mb-2">Contact Number</label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 7599313770, +91 7895114479"
+                  value={assistNumber}
+                  onChange={(e) => setAssistNumber(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-500"
+                />
+                <button
+                  onClick={handleSaveAssistNumber}
+                  disabled={savingAssistNumber}
+                  className="mt-4 px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 rounded-lg text-white font-medium"
+                >
+                  {savingAssistNumber ? "Saving..." : "Save Contact Number"}
+                </button>
+              </div>
+            </div>
+          ) : selectedFolder === 'login' ? (
             <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
                 <h3 className="text-lg font-semibold text-blue-400 mb-3">Left Side Image</h3>
@@ -591,7 +650,8 @@ export default function ImageManagementPage() {
             </div>
           )}
 
-          {/* Files List */}
+          {/* Files List - hidden for Assistance Contact tab */}
+          {selectedFolder !== 'assistance-contact' && (
           <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">
               {selectedFolder === 'dashboard' ? 'Dashboard' : selectedFolder === 'personnel' ? 'Personnel' : selectedFolder === 'login' ? 'Login' : "What's New"} {selectedFolder === 'whats-new' ? 'Documents' : 'Images'} {selectedFolder !== 'login' && `(${currentImages.length})`}
@@ -680,6 +740,7 @@ export default function ImageManagementPage() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Delete Confirmation Modal */}

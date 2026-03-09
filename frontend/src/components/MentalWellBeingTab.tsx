@@ -620,7 +620,7 @@ export default function MentalWellBeingTab({
                                       ? formatDate(record.next_review_date)
                                       : "-"}
                                   </p>
-                                  <p>
+                                  {/* <p>
                                     <span className="text-gray-400">
                                       Deployment Duration (days):{" "}
                                     </span>
@@ -637,7 +637,7 @@ export default function MentalWellBeingTab({
                                       Medical Officer Remarks:{" "}
                                     </span>
                                     {record.medical_officer_remarks || "-"}
-                                  </p>
+                                  </p> */}
                                   <p>
                                     <span className="text-gray-400">
                                       Remarks:{" "}

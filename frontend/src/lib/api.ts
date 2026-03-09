@@ -1592,6 +1592,8 @@ export interface AppSettings {
   login_right_name?: string;
   login_right_army_number?: string;
   login_right_rank?: string;
+  /** Dashboard "For any assistance contact" phone number */
+  assist_number?: string;
 }
 
 export async function getAppSettings(): Promise<{ success: boolean; settings?: AppSettings; message?: string }> {
@@ -1635,6 +1637,7 @@ export async function updateAppSettings(
     if (settings.login_right_name !== undefined) payload.login_right_name = settings.login_right_name;
     if (settings.login_right_army_number !== undefined) payload.login_right_army_number = settings.login_right_army_number;
     if (settings.login_right_rank !== undefined) payload.login_right_rank = settings.login_right_rank;
+    if (settings.assist_number !== undefined) payload.assist_number = settings.assist_number;
 
     const encryptedPayload = encryptRequestPayload(payload);
     const res = await fetch(`${API_BASE_URL}/app-settings`, {

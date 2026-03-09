@@ -114,6 +114,20 @@ export const validatePersonnelDob = (value: string): string => {
 };
 
 /**
+ * Format date to DD-MM-YYYY (dash separator)
+ * @param dateString - Date as string
+ * @returns Formatted date string
+ */
+export const formatDateDDMMYYYY = (dateString: string | undefined | null): string => {
+  const d = parseDate(dateString);
+  if (!d) return '--';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+/**
  * Format duration string that may contain YYYY-MM-DD dates to dd/mm/yyyy.
  * Handles: "2024-01-15 to 2024-02-15", "2024-01-15", RFC3339, or plain text.
  */
@@ -127,6 +141,24 @@ export const formatDurationDates = (duration: string | undefined | null): string
   const singleMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)$/);
   if (singleMatch) {
     return `${formatDate(singleMatch[1])} - till date`;
+  }
+  return trimmed;
+};
+
+/**
+ * Format duration string to DD-MM-YYYY format.
+ * Handles: "2024-01-15 to 2024-02-15", "2024-01-15", RFC3339, or plain text.
+ */
+export const formatDurationDatesDDMMYYYY = (duration: string | undefined | null): string => {
+  if (!duration || !duration.trim()) return '--';
+  const trimmed = duration.trim();
+  const rangeMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)\s+to\s+(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)$/i);
+  if (rangeMatch) {
+    return `${formatDateDDMMYYYY(rangeMatch[1])} to ${formatDateDDMMYYYY(rangeMatch[2])}`;
+  }
+  const singleMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}(?:T[\d:.Z+-]+)?)$/);
+  if (singleMatch) {
+    return `${formatDateDDMMYYYY(singleMatch[1])} - till date`;
   }
   return trimmed;
 };
