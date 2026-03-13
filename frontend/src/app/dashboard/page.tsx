@@ -11,6 +11,7 @@ import { Users, CheckCircle2, Hospital, CalendarDays, Briefcase,Bell, BookOpen, 
 import ImageComponent from 'next/image';
 import { config } from "@/config/env";
 import { formatDate } from "@/lib/utils";
+import { getServerDate } from "@/lib/serverTime";
 
 // Custom tooltip component for better styling control
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -999,11 +1000,11 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3 text-white font-semibold text-lg lg:text-xl">
                     <Calendar className="w-6 h-6 text-blue-400" />
                     <span>
-                      {new Date().toLocaleDateString('en-GB', { 
+                      {getServerDate().toLocaleDateString('en-GB', { 
                         day: '2-digit', 
                         month: 'short', 
                         year: 'numeric' 
-                      })}, {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                      })}, {getServerDate().toLocaleDateString('en-US', { weekday: 'short' })}
                     </span>
                   </div>
                   
@@ -1038,11 +1039,11 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3 text-white font-semibold text-lg lg:text-xl">
                     <Calendar className="w-6 h-6 text-blue-400" />
                     <span>
-                      {new Date().toLocaleDateString('en-GB', { 
+                      {getServerDate().toLocaleDateString('en-GB', { 
                         day: '2-digit', 
                         month: 'short', 
                         year: 'numeric' 
-                      })}, {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                      })}, {getServerDate().toLocaleDateString('en-US', { weekday: 'short' })}
                     </span>
                   </div>
                   
