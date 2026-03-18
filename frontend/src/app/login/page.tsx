@@ -294,7 +294,7 @@ export default function LoginPage() {
                 priority
               />
             </div>
-            <h1 className="login-title uppercase">towering twelfth</h1>
+            <h1 className="login-title uppercase">TOWERING TWELFTH</h1>
             <div className="tagline">
               <div className="premium-typography-container animate-fade-in">
                 <div className="flex items-center justify-center mb-6">

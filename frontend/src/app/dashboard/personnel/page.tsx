@@ -1110,7 +1110,7 @@ export default function PersonnelPage() {
 
         {/* Search and Filter - Add button, search, filters in one row */}
         <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-4 lg:p-6 mb-6 shadow-lg flex-shrink-0">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <div className="flex flex-col gap-3 flex-wrap lg:flex-row lg:items-center lg:gap-4">
             {canModify && user?.role === 'admin' && (
               <>
                 <button

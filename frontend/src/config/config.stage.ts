@@ -10,7 +10,7 @@ export const stageConfig = {
   API_ENCRYPTION_ALGORITHM: 'aes-256-cbc',
 
   FRONTEND_URL: 'https://ipmas.mapskil.com:3000',
-  BACKEND_URL: 'https://ipmas.mapskil.com:5003',
+  BACKEND_URL: 'https://ipmas.mapskil.com',
 
   NODE_ENV: 'stage' as const,
   IS_PRODUCTION: false,

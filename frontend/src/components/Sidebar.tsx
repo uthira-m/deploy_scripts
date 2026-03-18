@@ -8,6 +8,7 @@ import { LayoutDashboard, CalendarDays,UserCheck, BookOpen, Star, Crown, Users, 
 import ImageComponent from 'next/image';
 import logoImage from '@/assets/logo1.png';
 import { useAppSettings } from '@/contexts/AppSettingsContext';
+import packageJson from '../../package.json';
 
 // Admin Menu - Full access
 const adminLinks = [
@@ -35,6 +36,7 @@ const adminLinks = [
 const commanderLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/leave', label: 'Leave Management', icon: CalendarDays },
+   { href: '/dashboard/courses', label: 'Courses', icon: BookOpen },
   { href: '/dashboard/personnel', label: 'My Personnels', icon: Users },
   { href: '/dashboard/my-profile', label: 'My Profile', icon: User },
 ];
@@ -138,9 +140,9 @@ export default function Sidebar() {
               <span className="text-lg font-extrabold text-white tracking-tight">{appName}</span>
             )}
           </div>
-          {/* Role Badge */}
-          {user?.role && !isCollapsed && (
-            <div className="px-2">
+          {/* Role Badge & Version */}
+          <div className={`px-2 flex items-center gap-2 flex-wrap ${isCollapsed ? 'justify-center' : ''}`}>
+            {user?.role && !isCollapsed && (
               <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold uppercase ${
                 user.role === 'admin' 
                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' 
@@ -150,8 +152,9 @@ export default function Sidebar() {
               }`}>
                 {user.role}
               </div>
-            </div>
-          )}
+            )}
+            <span className="text-xs text-gray-500" title="App version">v{packageJson.version}</span>
+          </div>
         </div>
         
         <div className="sidebar-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
